@@ -156,10 +156,94 @@ main.bit-lab {
   }
 }
 
+.bit-tape {
+  width: min(100%, 22rem);
+  margin: 1.45rem 0 0;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: rgba(243, 240, 232, 0.78);
+}
+
+.bit-tape-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  color: rgba(243, 240, 232, 0.62);
+}
+
+.bit-tape-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bit-tape-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.32rem 0;
+  border-top: 1px solid rgba(243, 240, 232, 0.12);
+}
+
+.bit-tape-kind {
+  letter-spacing: 0.06em;
+  color: rgba(243, 240, 232, 0.9);
+}
+
+.bit-tape-age {
+  font-variant-numeric: tabular-nums;
+  color: rgba(243, 240, 232, 0.72);
+}
+
+.bit-tape-note {
+  margin: 0.15rem 0 0;
+  color: rgba(243, 240, 232, 0.62);
+}
+
+.bit-tape-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bit-tape-row.is-new {
+    animation: bit-tape-in 220ms ease;
+  }
+}
+
+@keyframes bit-tape-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.2rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .bit-tape {
+    width: min(100%, 20rem);
+  }
+}
+
 @media (max-width: 700px) {
   .bit-production-stage {
     width: min(100%, 16rem);
     height: 16rem;
+  }
+
+  .bit-tape {
+    width: min(100%, 16rem);
   }
 
   main.home {

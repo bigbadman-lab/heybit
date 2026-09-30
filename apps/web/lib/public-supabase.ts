@@ -13,7 +13,7 @@ function loadRootEnv(): void {
     return;
   }
   envLoaded = true;
-  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
   const filePath = path.join(repoRoot, ".env.local");
   if (!existsSync(filePath)) {
     return;

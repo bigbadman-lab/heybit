@@ -18,7 +18,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck --workspaces --if-present",
     "lint": "eslint . && npm run lint -w @heybit/web",
-    "test": "tsx --test scripts/env-check.test.ts scripts/load-local-env.test.ts scripts/launch-report.test.ts scripts/client-safety.test.ts scripts/commands.test.ts scripts/bit-mascot.test.ts packages/shared/src/contracts.test.ts packages/shared/src/bit-runtime.test.ts packages/shared/src/trade.test.ts packages/shared/src/ingest-queue.test.ts packages/shared/src/reaction.test.ts apps/worker/src/health.test.ts",
+    "test": "tsx --test scripts/env-check.test.ts scripts/load-local-env.test.ts scripts/launch-report.test.ts scripts/client-safety.test.ts scripts/commands.test.ts scripts/bit-mascot.test.ts scripts/bit-visual.test.ts scripts/bit-tape.test.ts packages/shared/src/contracts.test.ts packages/shared/src/bit-runtime.test.ts packages/shared/src/trade.test.ts packages/shared/src/ingest-queue.test.ts packages/shared/src/reaction.test.ts apps/worker/src/health.test.ts",
     "build": "npm run build --workspaces --if-present",
     "env:check": "tsx scripts/env-check.ts",
     "launch:status": "tsx scripts/launch-status.ts",

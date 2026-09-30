@@ -180,7 +180,7 @@ test("fallback and the lab use the canonical logo without a backend", () => {
   }
 });
 
-test("production homepage uses the approved idle mascot without event wiring", () => {
+test("production homepage consumes the visual feed and keeps the lab manual", () => {
   const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
   const production = readFileSync(new URL("../apps/web/components/bit/BitProduction.tsx", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
@@ -191,7 +191,9 @@ test("production homepage uses the approved idle mascot without event wiring", (
   assert.match(page, /Official mint:/);
   assert.equal(page.includes("Development foundation"), false);
   assert.equal(page.includes("This is not the live BIT website."), false);
-  assert.match(production, /<BitMascot3D state="IDLE"/);
+  assert.equal(page.includes("setTimeout"), false);
+  assert.match(production, /useBitVisualPose/);
+  assert.equal(production.includes('state="IDLE"'), false);
   assert.match(production, /BIT_FALLBACK_MARK/);
   assert.match(production, /prefers-reduced-motion/);
   assert.equal(production.includes("debugOrbit"), false);
