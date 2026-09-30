@@ -59,7 +59,7 @@ Access:
 ## Applications
 
 - `apps/web` is the Next.js app. It server-renders the current runtime state. It is not the final site.
-- `apps/worker` reads the same runtime row and, once the token is live, processes confirmed trades through a bounded queue. It does not call OpenAI.
+- `apps/worker` reads the same runtime row. Once the token is live it processes confirmed trades through a bounded queue, then a separate reaction scheduler may ask OpenAI for one short line. During `PRELAUNCH` both stay idle.
 - `packages/shared` holds the event names, the canonical runtime contract, and the deterministic BUY/SELL parser.
 
 ## Trade monitoring
@@ -107,17 +107,33 @@ LIVE + canonical mint -> listener ACTIVE
 
 There is no environment toggle and no redeploy for that change. The worker polls canonical runtime state every five seconds.
 
-OpenAI is not called from this path.
+```text
+deterministic events
+    |
+    v
+aggregation windows
+    |
+    v
+reaction scheduler
+    |
+    v
+OpenAI
+    |
+    v
+validated BIT reaction
+    |
+    v
+bit_reactions
+```
+
+Every confirmed trade can be stored. Not every trade gets a reaction. Normal windows are 8 seconds. Low activity may describe one trade. Heavier windows become one burst summary. The scheduler keeps one pending normal summary, waits at least 5 seconds between ordinary lines, and waits longer when activity is high or very high. Normal summaries older than 30 seconds expire. `TOKEN_BURN` and `DEX_PAID` are priority inputs and are not discarded by that expiry. OpenAI concurrency is 1. The model name is `gpt-6-luna`.
 
 ## Future reliability requirements
 
-These are required before production monitoring. They are not implemented.
+These remain outside this phase.
 
-- Deduplication by transaction identity and signature
-- Restart safety
-- Websocket reconnect safety
-- Duplicate reaction prevention
-- Durable processing
-- Practical ordering protection
-
-Alchemy monitoring, OpenAI reactions, production launch activation, burns, and DEX-paid writes are not implemented.
+- Production website
+- Production worker deployment
+- Burn execution
+- DEX-paid mutation
+- Token activation

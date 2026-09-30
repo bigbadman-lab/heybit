@@ -46,6 +46,13 @@ test("PRELAUNCH idleness is healthy and the listener stays idle", () => {
       activeProcessors: 0,
       maxConcurrency: 8,
       processing: "IDLE",
+      reactionScheduler: "idle",
+      openai: "ready",
+      reactionQueueDepth: 0,
+      openaiActive: 0,
+      recentReactions: 0,
+      recentExpired: 0,
+      recentFailures: 0,
     },
   );
   const text = formatWorkerStatus({
@@ -104,13 +111,31 @@ test("a missing confirmed transaction does not throw", () => {
   assert.equal(fromConfirmedTransaction("sig", null), null);
 });
 
-test("worker source does not send transactions or call OpenAI", () => {
-  const forbidden = ["sendTransaction", "requestAirdrop", "api.openai.com", "OPENAI_API_KEY", ".update("];
+test("inference failure does not crash worker health", () => {
+  const health = healthFromSnapshot({
+    runtime: prelaunch,
+    alchemyRpc: "ready",
+    alchemyWss: "ready",
+    tradeListener: "idle",
+    openai: "degraded",
+    recentFailures: 3,
+  });
+  assert.equal(health.process, "healthy");
+  assert.equal(health.openai, "degraded");
+  assert.equal(health.reactionScheduler, "idle");
+  assert.equal(health.recentFailures, 3);
+});
+
+test("worker source does not send transactions", () => {
+  const forbidden = ["sendTransaction", "requestAirdrop", ".update("];
   for (const file of listTs(workerSrc)) {
     const text = readFileSync(file, "utf8");
     for (const name of forbidden) {
       assert.equal(text.includes(name), false, `${path.basename(file)} contains ${name}`);
     }
+    assert.equal(text.includes("api.openai.com"), false, `${path.basename(file)} names the OpenAI host`);
+    assert.equal(text.includes("console.log(key"), false);
+    assert.equal(text.includes("console.log(env"), false);
   }
 });
 

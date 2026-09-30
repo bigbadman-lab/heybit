@@ -27,9 +27,9 @@ That change does not edit Vercel or Render environment variables. It does not re
 The worker polls `bit_runtime`. Monitoring is runtime-driven:
 
 ```text
-PRELAUNCH -> listener IDLE
+PRELAUNCH -> listener IDLE, reaction scheduler IDLE
 
-LIVE + canonical mint -> listener ACTIVE
+LIVE + canonical mint -> listener ACTIVE, reaction scheduler ACTIVE
 ```
 
 No env toggle. No redeploy.
@@ -39,8 +39,10 @@ No env toggle. No redeploy.
 | Command | Behaviour |
 | --- | --- |
 | `npm run launch:status` | Reads `bit_runtime` and reports the listener gate. A pass is not launch approval. |
-| `npm run launch:preflight` | Read-only Phase 3.1 checks. A pass is not launch approval. |
+| `npm run launch:preflight` | Read-only Phase 4 checks. A pass is not launch approval. |
 | `npm run monitoring:stress` | Synthetic 1,000-signature queue run. No live token and no writes. |
+| `npm run reactions:stress` | Synthetic 1,000-trade reaction run. Mocked inference. No live token. |
+| `npm run openai:check` | One controlled BIT line. Prints the sample only. |
 | `npm run monitoring:benchmark` | Same synthetic run with timing. Diagnostic only, not a throughput gate. |
 | `npm run supabase:check` | Read-only service-role and anon reads of the singleton row. |
 | `npm run alchemy:check` | Read-only mainnet RPC slot read and websocket probe. |

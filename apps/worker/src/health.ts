@@ -14,6 +14,13 @@ export interface WorkerHealth {
   activeProcessors: number;
   maxConcurrency: number;
   processing: "IDLE" | "ACTIVE" | "BACKLOGGED" | "DEGRADED" | "UNAVAILABLE";
+  reactionScheduler: "idle" | "active";
+  openai: "ready" | "degraded";
+  reactionQueueDepth: number;
+  openaiActive: number;
+  recentReactions: number;
+  recentExpired: number;
+  recentFailures: number;
 }
 
 export function healthFromSnapshot(snapshot: {
@@ -24,6 +31,12 @@ export function healthFromSnapshot(snapshot: {
   queueDepth?: number;
   activeProcessors?: number;
   processing?: WorkerHealth["processing"];
+  openai?: WorkerHealth["openai"];
+  reactionQueueDepth?: number;
+  openaiActive?: number;
+  recentReactions?: number;
+  recentExpired?: number;
+  recentFailures?: number;
 }): WorkerHealth {
   const runtimeReadable = snapshot.runtime.status === "ok";
   const alchemyReady = snapshot.alchemyRpc === "ready" && snapshot.alchemyWss === "ready";
@@ -41,6 +54,13 @@ export function healthFromSnapshot(snapshot: {
     processing:
       snapshot.processing ??
       (!runtimeReadable || !alchemyReady ? "DEGRADED" : snapshot.tradeListener === "idle" ? "IDLE" : "ACTIVE"),
+    reactionScheduler: snapshot.tradeListener === "idle" ? "idle" : "active",
+    openai: snapshot.openai ?? "ready",
+    reactionQueueDepth: snapshot.reactionQueueDepth ?? 0,
+    openaiActive: snapshot.openaiActive ?? 0,
+    recentReactions: snapshot.recentReactions ?? 0,
+    recentExpired: snapshot.recentExpired ?? 0,
+    recentFailures: snapshot.recentFailures ?? 0,
   };
 }
 

@@ -8,7 +8,9 @@
     "./trade": "./src/trade.ts",
     "./fixtures": "./src/fixtures.ts",
     "./ingest": "./src/ingest-queue.ts",
-    "./stress": "./src/stress.ts"
+    "./stress": "./src/stress.ts",
+    "./reaction": "./src/reaction.ts",
+    "./reaction-stress": "./src/reaction-stress.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1"

@@ -24,7 +24,15 @@ export interface AlchemyGate {
   wss: "PASS" | "FAIL";
 }
 
-export function formatLaunchStatus(result: RuntimeReadResult, alchemy: AlchemyGate = { rpc: "FAIL", wss: "FAIL" }): string {
+export function formatLaunchStatus(
+  result: RuntimeReadResult,
+  alchemy: AlchemyGate = { rpc: "FAIL", wss: "FAIL" },
+  reactions: { openai: "PASS" | "FAIL"; reactionPipeline: "READY" | "BLOCKED"; reactionScheduler: "IDLE" | "ACTIVE" } = {
+    openai: "FAIL",
+    reactionPipeline: "READY",
+    reactionScheduler: "IDLE",
+  },
+): string {
   if (result.status !== "ok") {
     return [
       "HEYBIT — LAUNCH STATUS",
@@ -38,10 +46,16 @@ export function formatLaunchStatus(result: RuntimeReadResult, alchemy: AlchemyGa
       line("Alchemy RPC", alchemy.rpc),
       line("Alchemy WSS", alchemy.wss),
       line("Trade listener", "IDLE"),
-      line("Reason", "runtime unavailable"),
+      "",
       line("Queue capacity", "READY"),
       line("Concurrency", String(PROCESSOR_CONCURRENCY)),
       line("Backpressure", "READY"),
+      "",
+      line("OpenAI", reactions.openai),
+      line("Reaction pipeline", reactions.reactionPipeline),
+      line("Reaction scheduler", "IDLE"),
+      "",
+      line("Reason", "runtime unavailable"),
       "",
       "This is runtime and monitoring status, not launch approval.",
       "",
@@ -68,10 +82,16 @@ export function formatLaunchStatus(result: RuntimeReadResult, alchemy: AlchemyGa
     line("Alchemy RPC", alchemy.rpc),
     line("Alchemy WSS", alchemy.wss),
     line("Trade listener", listener),
-    line("Reason", reason),
+    "",
     line("Queue capacity", "READY"),
     line("Concurrency", String(PROCESSOR_CONCURRENCY)),
     line("Backpressure", "READY"),
+    "",
+    line("OpenAI", reactions.openai),
+    line("Reaction pipeline", reactions.reactionPipeline),
+    line("Reaction scheduler", live ? reactions.reactionScheduler : "IDLE"),
+    "",
+    line("Reason", reason),
     "",
     "This is runtime and monitoring status, not launch approval.",
     "",

@@ -45,4 +45,15 @@ Phase 3 can verify Alchemy RPC, Alchemy WSS, mainnet genesis, the trade parser, 
 - retries use backoff and stop after three attempts
 - backlog health reports queue depth and active processors without crashing the worker
 
+## Phase 4
+
+- OpenAI connectivity through `npm run openai:check`
+- reaction aggregation windows and activity levels
+- bounded OpenAI concurrency of 1
+- stale reaction summaries expire instead of replaying
+- reaction idempotency on `source_key`
+- prohibited trading language is rejected
+- `npm run reactions:stress` passes
+- OpenAI timeout, rate limit, and repeated failure fall back without stopping the worker
+
 `npm run launch:preflight` must not be treated as launch approval.

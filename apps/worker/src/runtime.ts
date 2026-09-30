@@ -39,11 +39,29 @@ export function formatWorkerStatus(snapshot: {
     failures: number;
   };
   processing?: "IDLE" | "ACTIVE" | "BACKLOGGED" | "DEGRADED";
+  reactions?: {
+    scheduler: "IDLE" | "ACTIVE";
+    openai: "READY" | "DEGRADED";
+    queueDepth: number;
+    openaiActive: number;
+    recentReactions: number;
+    recentExpired: number;
+    recentFailures: number;
+  };
 }): string {
   const runtimeState = snapshot.runtime.status === "ok" ? snapshot.runtime.runtime.launchState : "unavailable";
   const mint = snapshot.runtime.status === "ok" ? (snapshot.runtime.runtime.canonicalMint ?? "none") : "none";
   const queue = snapshot.queue ?? { depth: 0, active: 0, processed: 0, duplicates: 0, retries: 0, failures: 0 };
   const processing = snapshot.processing ?? (snapshot.listener === "IDLE" ? "IDLE" : "ACTIVE");
+  const reactions = snapshot.reactions ?? {
+    scheduler: "IDLE" as const,
+    openai: "READY" as const,
+    queueDepth: 0,
+    openaiActive: 0,
+    recentReactions: 0,
+    recentExpired: 0,
+    recentFailures: 0,
+  };
   return [
     "HEYBIT worker",
     "",
@@ -59,6 +77,13 @@ export function formatWorkerStatus(snapshot: {
     `duplicates: ${queue.duplicates}`,
     `retries: ${queue.retries}`,
     `failures: ${queue.failures}`,
+    `reaction scheduler: ${reactions.scheduler}`,
+    `openai: ${reactions.openai}`,
+    `reaction queue: ${reactions.queueDepth}`,
+    `openai active: ${reactions.openaiActive}`,
+    `recent reactions: ${reactions.recentReactions}`,
+    `recent expired: ${reactions.recentExpired}`,
+    `recent failures: ${reactions.recentFailures}`,
   ].join("\n");
 }
 

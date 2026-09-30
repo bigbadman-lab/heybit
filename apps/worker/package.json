@@ -5,9 +5,10 @@
   "type": "module",
   "dependencies": {
     "@heybit/shared": "*",
-    "@supabase/supabase-js": "^2.81.1",
     "@solana/web3.js": "^1.98.4",
-    "dotenv": "^17.2.2"
+    "@supabase/supabase-js": "^2.81.1",
+    "dotenv": "^17.2.2",
+    "openai": "^6.49.0"
   },
   "scripts": {
     "start": "tsx src/index.ts",
