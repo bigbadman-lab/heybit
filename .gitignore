@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment files. .env.example is the committed template.
+.env
+.env.*
+!.env.example
+
+# Private keys and Solana keypair material
+keys/
+*.pem
+*.keypair
+*.keypair.json
+**/*keypair*.json
+
+# Build output and generated artifacts
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# Local caches and coverage
+.cache/
+.turbo/
+coverage/
+
+# OS / editor
+.DS_Store

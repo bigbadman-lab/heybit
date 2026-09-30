@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "rule": "SECRETS / STATIC INFRA CONFIG -> ENVIRONMENT VARIABLES. DYNAMIC LAUNCH STATE -> SUPABASE.",
+  "variables": [
+    {
+      "name": "ALCHEMY_SOLANA_RPC_URL",
+      "destinations": ["local", "render"],
+      "required": true,
+      "description": "Alchemy Solana HTTP RPC URL."
+    },
+    {
+      "name": "ALCHEMY_SOLANA_WSS_URL",
+      "destinations": ["local", "render"],
+      "required": true,
+      "description": "Alchemy Solana websocket URL."
+    },
+    {
+      "name": "OPENAI_API_KEY",
+      "destinations": ["local", "render"],
+      "required": true,
+      "description": "OpenAI API key for future short BIT personality text. Worker and local operator only."
+    },
+    {
+      "name": "SUPABASE_URL",
+      "destinations": ["local", "render"],
+      "required": true,
+      "description": "Supabase project URL for server-side access."
+    },
+    {
+      "name": "SUPABASE_ANON_KEY",
+      "destinations": ["local"],
+      "required": true,
+      "description": "Supabase anon key for local operator checks."
+    },
+    {
+      "name": "SUPABASE_SERVICE_ROLE_KEY",
+      "destinations": ["local", "render"],
+      "required": true,
+      "description": "Supabase service-role key. Local operator and Render worker only. Never expose to the browser."
+    },
+    {
+      "name": "BIT_DEPLOYER_KEYPAIR_PATH",
+      "destinations": ["local"],
+      "required": true,
+      "description": "Local filesystem path to the deployer keypair file. The key stays on the operator machine."
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPABASE_URL",
+      "destinations": ["vercel"],
+      "required": true,
+      "description": "Public Supabase URL for the Next.js app on Vercel."
+    },
+    {
+      "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "destinations": ["vercel"],
+      "required": true,
+      "description": "Public Supabase anon key for the Next.js app on Vercel."
+    }
+  ]
+}

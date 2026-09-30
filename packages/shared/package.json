@@ -1,0 +1,20 @@
+{
+  "name": "@heybit/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./trade": "./src/trade.ts",
+    "./fixtures": "./src/fixtures.ts",
+    "./ingest": "./src/ingest-queue.ts",
+    "./stress": "./src/stress.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.81.1"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  }
+}
