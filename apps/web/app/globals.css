@@ -20,6 +20,131 @@ main {
   font-size: 0.75rem;
 }
 
+main.bit-lab {
+  max-width: none;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(243, 240, 232, 0.07), transparent 46%),
+    #070708;
+  color: #f3f0e8;
+  color-scheme: dark;
+}
+
+.bit-view {
+  position: relative;
+  height: calc(100vh - 16rem);
+  min-height: 18rem;
+}
+
+.bit-view-3d,
+.bit-view-reference,
+.bit-view-overlay {
+  display: grid;
+}
+
+.bit-view-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.bit-view-overlay .bit-pane {
+  grid-area: 1 / 1;
+}
+
+.bit-pane {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.bit-stage,
+.bit-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bit-reference,
+.bit-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: auto;
+  height: 86%;
+  max-width: none;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.bit-overlay {
+  opacity: 0.4;
+  z-index: 2;
+}
+
+.bit-fallback {
+  display: block;
+  width: min(70vh, 86vw);
+  height: auto;
+  margin: 6vh auto;
+}
+
+.bit-controls {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.bit-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.bit-controls button,
+.bit-controls label {
+  font: inherit;
+  color: inherit;
+}
+
+.bit-controls button {
+  background: transparent;
+  border: 1px solid rgba(243, 240, 232, 0.35);
+  color: #f3f0e8;
+  padding: 0.35rem 0.55rem;
+}
+
+.bit-controls button[aria-pressed="true"] {
+  border-color: #f3f0e8;
+}
+
+.bit-readout {
+  margin: 0;
+  color: rgba(243, 240, 232, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+.bit-controls input[type="range"] {
+  display: block;
+  width: min(18rem, 100%);
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 700px) {
+  .bit-view {
+    height: calc(100dvh - 20rem);
+  }
+
+  .bit-view-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
 h1 {
   font-size: 2rem;
   font-weight: 600;
