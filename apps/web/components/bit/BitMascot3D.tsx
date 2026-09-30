@@ -27,29 +27,31 @@ export function BitMascot3D({
   loop?: boolean;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
+  const [sceneReady, setSceneReady] = useState(false);
 
   useEffect(() => {
     setWebgl(detectWebGl());
   }, []);
 
-  if (webgl === null) {
-    return <BitFallback className={className} />;
-  }
-  if (shouldUseFallback(webgl)) {
-    return <BitFallback className={className} />;
-  }
+  const showCanvas = webgl === true && !shouldUseFallback(webgl);
 
   return (
     <div className={className ?? "bit-stage"}>
-      <BitCanvas
-        state={state}
-        intensity={intensity}
-        reducedMotion={reducedMotion}
-        debugOrbit={debugOrbit}
-        resetSignal={resetSignal}
-        replaySignal={replaySignal}
-        loop={loop}
-      />
+      <BitFallback />
+      {showCanvas ? (
+        <div className={sceneReady ? "bit-canvas-layer is-ready" : "bit-canvas-layer"}>
+          <BitCanvas
+            state={state}
+            intensity={intensity}
+            reducedMotion={reducedMotion}
+            debugOrbit={debugOrbit}
+            resetSignal={resetSignal}
+            replaySignal={replaySignal}
+            loop={loop}
+            onReady={() => setSceneReady(true)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -62,6 +64,7 @@ function BitCanvas({
   resetSignal,
   replaySignal,
   loop,
+  onReady,
 }: {
   state: string;
   intensity: number;
@@ -70,6 +73,7 @@ function BitCanvas({
   resetSignal: number;
   replaySignal: number;
   loop: boolean;
+  onReady: () => void;
 }) {
   const [Canvas, setCanvas] = useState<typeof import("@react-three/fiber").Canvas | null>(null);
 
@@ -86,7 +90,7 @@ function BitCanvas({
   }, []);
 
   if (!Canvas) {
-    return <BitFallback />;
+    return null;
   }
 
   const initialCamera = cameraForViewport(1440, 900);
@@ -96,6 +100,8 @@ function BitCanvas({
       dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       frameloop={reducedMotion ? "demand" : "always"}
+      onCreated={onReady}
+      tabIndex={-1}
     >
       <BitScene
         state={state}
@@ -110,13 +116,11 @@ function BitCanvas({
   );
 }
 
-export function BitFallback({ className }: { className?: string }) {
+export function BitFallback() {
   return (
-    <div className={className ?? "bit-stage"}>
-      {/* The static mark must render without the image optimizer. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={BIT_FALLBACK_MARK} alt="BIT" className="bit-fallback" />
-    </div>
+    // The static mark must render without the image optimizer.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={BIT_FALLBACK_MARK} alt="BIT" className="bit-fallback" />
   );
 }
 

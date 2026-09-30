@@ -179,3 +179,25 @@ test("fallback and the lab use the canonical logo without a backend", () => {
     }
   }
 });
+
+test("production homepage uses the approved idle mascot without event wiring", () => {
+  const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
+  const production = readFileSync(new URL("../apps/web/components/bit/BitProduction.tsx", import.meta.url), "utf8");
+  const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /<BitProduction \/>/);
+  assert.match(page, /HEYBIT/);
+  assert.match(page, /BIT is waking up\./);
+  assert.match(page, /BIT runtime:/);
+  assert.match(page, /Official mint:/);
+  assert.equal(page.includes("Development foundation"), false);
+  assert.equal(page.includes("This is not the live BIT website."), false);
+  assert.match(production, /<BitMascot3D state="IDLE"/);
+  assert.match(production, /BIT_FALLBACK_MARK/);
+  assert.match(production, /prefers-reduced-motion/);
+  assert.equal(production.includes("debugOrbit"), false);
+  assert.equal(production.includes("Replay"), false);
+  assert.match(labPage, /<BitLab \/>/);
+  for (const forbidden of ["supabase", "openai", "fetch(", "WebSocket", "sendTransaction", "BUY", "SELL", "BURN"]) {
+    assert.equal(production.includes(forbidden), false, `production contains ${forbidden}`);
+  }
+});
