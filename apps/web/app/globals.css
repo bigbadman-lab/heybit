@@ -46,13 +46,46 @@ main.home {
   color-scheme: dark;
 }
 
-main.home .eyebrow {
+.bit-identity {
   width: min(100%, var(--bit-column, 22rem));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bit-sm);
+}
+
+main.home .eyebrow {
+  width: auto;
   margin: 0;
   font-size: 0.68rem;
   letter-spacing: 0.16em;
   text-align: left;
   color: rgba(243, 240, 232, 0.62);
+}
+
+.bit-x {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(243, 240, 232, 0.62);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.bit-x svg {
+  width: 0.72rem;
+  height: 0.72rem;
+  display: block;
+}
+
+.bit-x:hover,
+.bit-x:focus-visible {
+  color: #f3f0e8;
+  outline: 1px solid rgba(243, 240, 232, 0.7);
+  outline-offset: 3px;
 }
 
 main.home h1 {
@@ -272,6 +305,11 @@ main.bit-lab {
   color: rgba(243, 240, 232, 0.82);
 }
 
+.bit-tape-row.is-active .bit-tape-kind,
+.bit-tape-row.is-active .bit-tape-age {
+  color: rgba(243, 240, 232, 0.96);
+}
+
 .bit-tape-age {
   font-variant-numeric: tabular-nums;
   color: rgba(243, 240, 232, 0.62);
@@ -303,7 +341,7 @@ main.bit-lab {
 @keyframes bit-tape-in {
   from {
     opacity: 0;
-    transform: translateY(0.2rem);
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
@@ -443,6 +481,7 @@ main.bit-lab {
   main.home h1 {
     font-size: 1.12rem;
     line-height: 1.45;
+    min-height: 2.9em;
   }
 }
 

@@ -25,6 +25,13 @@ export function tapeRows(events: readonly TapeEvent[]): TapeEvent[] {
   return rows;
 }
 
+export function activeTapeId(cueId: string | null, rows: readonly { id: string }[]): string | null {
+  if (!cueId || cueId.trim() === "") {
+    return null;
+  }
+  return rows.some((row) => row.id === cueId) ? cueId : null;
+}
+
 export function tapeKindLabel(kind: string): string {
   if (kind === "DEX_PAID") {
     return "DEX PAID";

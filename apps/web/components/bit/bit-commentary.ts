@@ -4,6 +4,11 @@ export const FALLBACK_COMMENTARY = "still watching";
 
 export const IDLE_COMMENTARY_MS = 20_000;
 
+/** Idle lines rotate only while BIT is actually idle. */
+export function idleCommentaryActive(state: string): boolean {
+  return state === "IDLE";
+}
+
 export const COMMENTARY_POOLS: Record<BitMascotState, readonly string[]> = {
   IDLE: [
     "quiet out there",

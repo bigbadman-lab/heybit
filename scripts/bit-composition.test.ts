@@ -25,6 +25,7 @@ test("homepage composition keeps one column and the existing surfaces", () => {
   for (const rejected of ["HOW BIT WORKS", "BIT HAS STATES", "THE SYSTEM", "HomeLower", "home-lower"]) {
     assert.equal(page.includes(rejected), false, rejected);
   }
+  assert.match(page, /href="https:\/\/x\.com\/bitdotfun"/);
   assert.equal(page.includes("BIT runtime:"), false);
   assert.equal(page.includes("Official mint:"), false);
   for (const forbidden of ["wallet", "chart", "hamburger", "swap"]) {

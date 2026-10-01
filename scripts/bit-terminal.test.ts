@@ -6,11 +6,15 @@ import { terminalPrompt } from "../apps/web/components/bit/bit-terminal.js";
 
 test("terminal prompt follows state and does not advise", () => {
   assert.equal(terminalPrompt("IDLE"), "waiting.");
-  assert.equal(terminalPrompt("BUSY"), "observing.");
-  assert.equal(terminalPrompt("BUY"), "observing.");
-  assert.equal(terminalPrompt("SELL"), "observing.");
-  for (const line of [terminalPrompt("IDLE"), terminalPrompt("BUY")]) {
-    assert.equal(/buy now|pump|predict|bullish/i.test(line), false);
+  assert.equal(terminalPrompt("NOTICE"), "noticed.");
+  assert.equal(terminalPrompt("BUY"), "buy observed.");
+  assert.equal(terminalPrompt("SELL"), "sell observed.");
+  assert.equal(terminalPrompt("BUSY"), "busy.");
+  assert.equal(terminalPrompt("BURN"), "burn detected.");
+  assert.equal(terminalPrompt("DEX_PAID"), "dex paid.");
+  assert.equal(terminalPrompt("ROBOT"), "waiting.");
+  for (const state of ["IDLE", "NOTICE", "BUY", "SELL", "BUSY", "BURN", "DEX_PAID", "ROBOT"]) {
+    assert.equal(/buy now|sell now|pump|moon|bullish|bearish|good entry|bad exit/i.test(terminalPrompt(state)), false, state);
   }
   const at = Date.UTC(2026, 0, 1, 12, 31, 4);
   const date = new Date(at);

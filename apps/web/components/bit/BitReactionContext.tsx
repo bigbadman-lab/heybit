@@ -11,7 +11,7 @@ export function BitReactionContext() {
   const [announcement, setAnnouncement] = useState("");
 
   useEffect(() => {
-    if (!label || !feed.cueId) {
+    if (label !== "NOTICE" || !feed.cueId) {
       return;
     }
     if (seen.current === feed.cueId) {
