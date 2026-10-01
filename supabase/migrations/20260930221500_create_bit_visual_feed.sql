@@ -1,5 +1,6 @@
 -- Read-only visual cues for the homepage mascot.
--- Select-only. No amounts, prompts, or reaction text.
+-- Does not alter bit_runtime, processed_transactions, or bit_reactions.
+-- Does not grant writes. Does not expose amounts, prompts, or reaction text.
 
 create or replace view public.bit_visual_feed
 with (security_invoker = false) as

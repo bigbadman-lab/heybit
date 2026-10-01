@@ -27,10 +27,11 @@ main {
 }
 
 main.home {
+  --bit-column: 22rem;
   max-width: 40rem;
   min-height: 100vh;
   margin: 0 auto;
-  padding: clamp(1.25rem, 6vh, 4rem) 1.5rem 3rem;
+  padding: clamp(0.75rem, 2.5vh, 1.5rem) 1.5rem 2.75rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -41,23 +42,19 @@ main.home {
 }
 
 main.home .eyebrow {
-  margin: 0.15rem 0 0;
-  color: rgba(243, 240, 232, 0.55);
+  margin: 0.4rem 0 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: rgba(243, 240, 232, 0.62);
 }
 
 main.home h1 {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 500;
+  line-height: 1.3;
   letter-spacing: 0.01em;
-  margin: 0.7rem 0 0.9rem;
+  margin: 0.28rem 0 0;
   color: #f3f0e8;
-}
-
-main.home .home-status {
-  margin: 0.12rem 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.8rem;
-  color: rgba(243, 240, 232, 0.62);
 }
 
 main.bit-lab {
@@ -106,15 +103,21 @@ main.bit-lab {
   display: block;
   width: 100%;
   height: 100%;
+  background: transparent;
 }
 
 .bit-stage {
   position: relative;
 }
 
+.bit-lab .bit-stage {
+  background: #070708;
+}
+
 .bit-canvas-layer {
   position: absolute;
   inset: 0;
+  background: transparent;
   opacity: 0;
 }
 
@@ -123,21 +126,83 @@ main.bit-lab {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .bit-canvas-layer.is-ready {
-    transition: opacity 180ms ease;
+  .bit-canvas-layer.is-ready,
+  .bit-stage.is-live .bit-fallback {
+    transition: opacity 140ms ease;
   }
 }
 
 .bit-production {
-  margin: 0 0 0.25rem;
+  width: min(100%, var(--bit-column, 22rem));
+  margin: 0;
   pointer-events: none;
 }
 
+.bit-reaction {
+  height: 1rem;
+  margin: 0 0 0.05rem;
+  display: grid;
+  place-items: center;
+  width: min(100%, var(--bit-column, 22rem));
+  overflow: hidden;
+}
+
+.bit-reaction-label {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(243, 240, 232, 0.9);
+  opacity: 0;
+}
+
+.bit-reaction-label.is-on {
+  opacity: 1;
+}
+
+.bit-reaction-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bit-reaction-label {
+    transform: translateY(0.12rem) scale(0.98);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .bit-reaction-label.is-on {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bit-reaction-label {
+    transform: none;
+    transition: opacity 160ms ease;
+  }
+}
+
 .bit-production-stage {
-  width: min(100%, 22rem);
-  height: 22rem;
+  width: 100%;
+  aspect-ratio: 1;
   margin: 0 auto;
   overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .bit-production-stage .bit-fallback {
@@ -147,27 +212,31 @@ main.bit-lab {
   height: 100%;
   margin: 0;
   object-fit: contain;
+  background: transparent;
+}
+
+.bit-stage.is-live .bit-fallback {
+  opacity: 0;
 }
 
 @media (max-width: 1100px) {
-  .bit-production-stage {
-    width: min(100%, 20rem);
-    height: 20rem;
+  main.home {
+    --bit-column: 20rem;
   }
 }
 
 .bit-tape {
-  width: min(100%, 22rem);
-  margin: 1.45rem 0 0;
+  width: min(100%, var(--bit-column, 22rem));
+  margin: 1.7rem 0 0;
   text-align: left;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.75rem;
-  line-height: 1.35;
-  color: rgba(243, 240, 232, 0.78);
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: rgba(243, 240, 232, 0.72);
 }
 
 .bit-tape-label {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.2rem;
   font-size: 0.62rem;
   letter-spacing: 0.16em;
   color: rgba(243, 240, 232, 0.62);
@@ -183,18 +252,18 @@ main.bit-lab {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.32rem 0;
-  border-top: 1px solid rgba(243, 240, 232, 0.12);
+  padding: 0.22rem 0;
+  border-top: 1px solid rgba(243, 240, 232, 0.08);
 }
 
 .bit-tape-kind {
   letter-spacing: 0.06em;
-  color: rgba(243, 240, 232, 0.9);
+  color: rgba(243, 240, 232, 0.82);
 }
 
 .bit-tape-age {
   font-variant-numeric: tabular-nums;
-  color: rgba(243, 240, 232, 0.72);
+  color: rgba(243, 240, 232, 0.62);
 }
 
 .bit-tape-note {
@@ -230,28 +299,80 @@ main.bit-lab {
   }
 }
 
-@media (max-width: 1100px) {
-  .bit-tape {
-    width: min(100%, 20rem);
+.bit-status-block {
+  width: min(100%, var(--bit-column, 22rem));
+  margin: 0.85rem 0 0;
+  text-align: left;
+}
+
+.bit-status {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.bit-status div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.22rem 0;
+  border-top: 1px solid rgba(243, 240, 232, 0.08);
+}
+
+.bit-status dt {
+  letter-spacing: 0.08em;
+  color: rgba(243, 240, 232, 0.62);
+}
+
+.bit-status dd {
+  margin: 0;
+  color: rgba(243, 240, 232, 0.78);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.bit-commentary {
+  margin: 1rem 0 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: rgba(243, 240, 232, 0.68);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bit-commentary {
+    animation: bit-commentary-in 180ms ease;
+  }
+}
+
+@keyframes bit-commentary-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 @media (max-width: 700px) {
-  .bit-production-stage {
-    width: min(100%, 16rem);
-    height: 16rem;
-  }
-
-  .bit-tape {
-    width: min(100%, 16rem);
-  }
-
   main.home {
-    padding-top: 1.25rem;
+    --bit-column: 16rem;
+    padding-top: 0.75rem;
+    padding-bottom: 2rem;
   }
 
   main.home h1 {
-    margin-top: 0.45rem;
+    margin-top: 0.2rem;
+    font-size: 1.1rem;
+  }
+
+  .bit-tape {
+    margin-top: 1.25rem;
+  }
+
+  .bit-status-block {
+    margin-top: 0.65rem;
   }
 }
 

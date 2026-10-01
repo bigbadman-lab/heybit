@@ -16,7 +16,15 @@ import {
 } from "./bit-mascot.constants";
 import { BIT_EYE_LOOPS, eyeLoopArea } from "./bit-mascot.eyes";
 import { signedArea, traceCells, worldPoint, type GridPoint } from "./bit-mascot.geometry";
-import { cameraForViewport, clampIntensity, parseBitMascotState, sampleMascotPose } from "./bit-mascot.state";
+import {
+  cameraForProduction,
+  cameraForViewport,
+  clampIntensity,
+  parseBitMascotState,
+  productionHaloScale,
+  productionMarkFit,
+  sampleMascotPose,
+} from "./bit-mascot.state";
 
 const COLS = BIT_ROWS[0]?.length ?? 1;
 const ROWS = BIT_ROWS.length;
@@ -29,6 +37,7 @@ export function BitScene({
   resetSignal,
   replaySignal,
   loop,
+  production = false,
 }: {
   state: string;
   intensity: number;
@@ -37,22 +46,28 @@ export function BitScene({
   resetSignal: number;
   replaySignal: number;
   loop: boolean;
+  production?: boolean;
 }) {
   const parsed = parseBitMascotState(state);
   const level = clampIntensity(intensity);
   return (
     <>
-      <color attach="background" args={["#070708"]} />
       <ambientLight intensity={1.05} />
       <directionalLight position={[0.15, 0.35, 9]} intensity={0.85} color="#fffaf4" />
       <directionalLight position={[-1.6, 1.4, -2.4]} intensity={0.28} color="#f7f4ee" />
-      <ResponsiveCamera resetSignal={resetSignal} reducedMotion={reducedMotion} debugOrbit={debugOrbit} />
+      <ResponsiveCamera
+        resetSignal={resetSignal}
+        reducedMotion={reducedMotion}
+        debugOrbit={debugOrbit}
+        production={production}
+      />
       <BitRig
         state={parsed}
         intensity={level}
         reducedMotion={reducedMotion}
         replaySignal={replaySignal}
         loop={loop}
+        production={production}
       />
       <FrameNudger
         state={parsed}
@@ -73,12 +88,14 @@ function BitRig({
   reducedMotion,
   replaySignal,
   loop,
+  production,
 }: {
   state: ReturnType<typeof parseBitMascotState>;
   intensity: number;
   reducedMotion: boolean;
   replaySignal: number;
   loop: boolean;
+  production: boolean;
 }) {
   const root = useRef<THREE.Group>(null);
   const eyes = useRef<THREE.Group>(null);
@@ -108,6 +125,7 @@ function BitRig({
   const previous = useRef(state);
   const replaySeen = useRef(replaySignal);
   const width = useThree((scene) => scene.size.width);
+  const height = useThree((scene) => scene.size.height);
 
   useEffect(() => {
     return () => {
@@ -138,11 +156,12 @@ function BitRig({
       eventElapsedMs: elapsedMs,
       motionGain: width < 700 ? 0.78 : width < 1100 ? 0.9 : 1,
     });
+    const fit = production ? productionMarkFit(width, height) : { scale: 1, offsetX: 0, offsetY: 0 };
     if (root.current) {
       const lateral = pose.scale * (1 + (1 - pose.squash) * 0.4);
-      root.current.position.set(pose.bodyX, pose.bodyY, 0);
+      root.current.position.set(pose.bodyX * fit.scale + fit.offsetX, pose.bodyY * fit.scale + fit.offsetY, 0);
       root.current.rotation.set(pose.rotX, pose.rotY, pose.rotZ);
-      root.current.scale.set(lateral, pose.scale * pose.squash, lateral);
+      root.current.scale.set(lateral * fit.scale, pose.scale * pose.squash * fit.scale, lateral * fit.scale);
     }
     bodyMaterial.emissiveIntensity = 0.05 + Math.max(0, pose.emissive - 0.3) * 0.9;
     eyeMaterial.color.copy(eyeDark).lerp(eyeHot, pose.eyeFlash);
@@ -178,7 +197,13 @@ function BitRig({
       }
     }
     if (halo.current) {
-      halo.current.scale.setScalar(pose.haloScale);
+      const haloScale = production ? productionHaloScale(fit.scale, pose.haloScale) : pose.haloScale;
+      halo.current.scale.setScalar(haloScale);
+      halo.current.position.set(
+        production ? fit.offsetX : 0.15,
+        production ? fit.offsetY : -0.05,
+        -1.15,
+      );
       const material = halo.current.material;
       if (material instanceof THREE.MeshBasicMaterial) {
         material.opacity = pose.haloOpacity;
@@ -221,7 +246,7 @@ function BitRig({
 
   return (
     <>
-    <SoftHalo ref={halo} />
+    <SoftHalo ref={halo} tight={production} />
     <group ref={root} name="BIT">
       <mesh name="Body" geometry={bodyGeometry} material={bodyMaterial} />
       <mesh name="Front" geometry={frontGeometry} material={frontMaterial} />
@@ -255,16 +280,22 @@ function BitRig({
   );
 }
 
-const SoftHalo = forwardRef<THREE.Mesh>(function SoftHalo(_props, ref) {
+const SoftHalo = forwardRef<THREE.Mesh, { tight?: boolean }>(function SoftHalo({ tight = false }, ref) {
   const material = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 128;
     canvas.height = 128;
     const context = canvas.getContext("2d");
-    const gradient = context?.createRadialGradient(64, 64, 10, 64, 64, 64);
+    const gradient = context?.createRadialGradient(64, 64, tight ? 0 : 10, 64, 64, 64);
     if (context && gradient) {
-      gradient.addColorStop(0, "rgba(255, 250, 244, 0.34)");
-      gradient.addColorStop(0.38, "rgba(255, 250, 244, 0.08)");
+      if (tight) {
+        gradient.addColorStop(0, "rgba(255, 250, 244, 0.14)");
+        gradient.addColorStop(0.42, "rgba(255, 250, 244, 0.03)");
+        gradient.addColorStop(0.7, "rgba(255, 250, 244, 0)");
+      } else {
+        gradient.addColorStop(0, "rgba(255, 250, 244, 0.34)");
+        gradient.addColorStop(0.38, "rgba(255, 250, 244, 0.08)");
+      }
       gradient.addColorStop(1, "rgba(255, 250, 244, 0)");
       context.fillStyle = gradient;
       context.fillRect(0, 0, 128, 128);
@@ -272,7 +303,7 @@ const SoftHalo = forwardRef<THREE.Mesh>(function SoftHalo(_props, ref) {
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     return new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
-  }, []);
+  }, [tight]);
   useEffect(() => {
     return () => {
       material.map?.dispose();
@@ -290,10 +321,12 @@ function ResponsiveCamera({
   resetSignal,
   reducedMotion,
   debugOrbit,
+  production,
 }: {
   resetSignal: number;
   reducedMotion: boolean;
   debugOrbit: boolean;
+  production: boolean;
 }) {
   const camera = useThree((state) => state.camera);
   const size = useThree((state) => state.size);
@@ -318,7 +351,7 @@ function ResponsiveCamera({
     if (debugOrbit) {
       return;
     }
-    const base = cameraForViewport(size.width, size.height);
+    const base = (production ? cameraForProduction : cameraForViewport)(size.width, size.height);
     const parallaxX = reducedMotion ? 0 : pointer.current.x * 0.015;
     const parallaxY = reducedMotion ? 0 : pointer.current.y * 0.006;
     camera.position.x = THREE.MathUtils.damp(camera.position.x, base.x + parallaxX, 3, 0.016);
@@ -328,10 +361,10 @@ function ResponsiveCamera({
   });
 
   useEffect(() => {
-    const base = cameraForViewport(size.width, size.height);
+    const base = (production ? cameraForProduction : cameraForViewport)(size.width, size.height);
     camera.position.set(base.x, base.y, base.z);
     camera.lookAt(0, 0, 0);
-  }, [camera, resetSignal, size.height, size.width]);
+  }, [camera, production, resetSignal, size.height, size.width]);
 
   return null;
 }

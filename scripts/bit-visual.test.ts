@@ -176,8 +176,9 @@ test("lab stays manual and the visual path does not write", () => {
     assert.equal(route.includes(forbidden), false, route);
   }
   assert.match(migration, /grant select on table public\.bit_visual_feed to anon, authenticated/);
-  assert.equal(migration.toLowerCase().includes("insert"), false);
-  assert.equal(migration.toLowerCase().includes("bit_runtime"), false);
+  assert.match(migration, /-- Does not alter bit_runtime, processed_transactions, or bit_reactions\./);
+  const sql = migration.replace(/--.*$/gm, "");
+  assert.equal(/\b(insert|update|delete|alter)\b/i.test(sql), false);
   const reader = readFileSync(new URL("../apps/web/lib/public-supabase.ts", import.meta.url), "utf8");
   const climb = reader.match(/fileURLToPath\(import\.meta\.url\)\), "(\.\.\/\.\.\/\.\.)"\)/);
   assert.ok(climb);

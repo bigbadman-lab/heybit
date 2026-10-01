@@ -25,6 +25,7 @@ export function BitProduction() {
         intensity={pose.intensity}
         reducedMotion={reducedMotion}
         className="bit-stage bit-production-stage"
+        production
       />
       <noscript>
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -50,11 +50,50 @@ const MAX_REACTION_RAD = (12 * Math.PI) / 180;
 
 /** Near-front camera. Desktop keeps only a small yaw. Smaller viewports sit closer to straight-on. */
 export function cameraForViewport(width: number, height: number): { x: number; y: number; z: number } {
+  return frameCamera(width, height, width < 700 ? 0.015 : width < 1100 ? 0.03 : 0.045, 0.004);
+}
+
+/** Production first frame. Closer to straight-on so the shallow side does not read as a different mark. */
+export function cameraForProduction(width: number, height: number): { x: number; y: number; z: number } {
+  return frameCamera(width, height, width < 700 ? 0.008 : width < 1100 ? 0.012 : 0.016, 0.001);
+}
+
+/**
+ * Fit the production model to the opaque span of bitmain2.png.
+ * The PNG mark covers 608×623 of its 1080 square and sits 0.93% below center.
+ */
+export function productionMarkFit(viewWidth = 1, viewHeight = 1): { scale: number; offsetX: number; offsetY: number } {
+  const distance = viewDistance(viewWidth, viewHeight);
+  const fov = (32 * Math.PI) / 180;
+  const visibleH = 2 * distance * Math.tan(fov / 2);
+  const visibleW = visibleH * (viewWidth / Math.max(viewHeight, 1));
+  const modelH = BIT_ROWS.length * BIT_CELL;
+  const modelW = (BIT_ROWS[0]?.length ?? 1) * BIT_CELL;
+  const scaleH = (623 / 1080) / (modelH / visibleH);
+  const scaleW = (608 / 1080) / (modelW / visibleW);
+  return {
+    scale: (scaleH + scaleW) / 2,
+    offsetX: 0.0005 * visibleW,
+    offsetY: -0.0093 * visibleH,
+  };
+}
+
+const HALO_PLANE = 16;
+const HALO_FADE = 0.7;
+const HALO_BODY_RATIO = 1.25;
+
+/** Production halo mesh scale. The visible glow stays near the body and dies before the stage edge. */
+export function productionHaloScale(markScale: number, poseHaloScale: number): number {
+  const bodyWidth = (BIT_ROWS[0]?.length ?? 1) * BIT_CELL * markScale;
+  const plane = (bodyWidth * HALO_BODY_RATIO) / HALO_FADE;
+  return poseHaloScale * (plane / HALO_PLANE);
+}
+
+function frameCamera(width: number, height: number, yaw: number, lift: number): { x: number; y: number; z: number } {
   const distance = viewDistance(width, height);
-  const yaw = width < 700 ? 0.015 : width < 1100 ? 0.03 : 0.045;
   return {
     x: Math.sin(yaw) * distance,
-    y: distance * 0.004,
+    y: distance * lift,
     z: Math.cos(yaw) * distance,
   };
 }

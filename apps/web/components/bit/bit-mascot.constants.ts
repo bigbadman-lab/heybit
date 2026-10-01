@@ -6,9 +6,10 @@ export const BIT_COMPARE_MODES = ["3D", "REFERENCE", "SPLIT", "OVERLAY"] as cons
 
 export type BitCompareMode = (typeof BIT_COMPARE_MODES)[number];
 
-/** Canonical BIT mark. The 3D mascot and the static fallback both follow this file. */
+/** Approved opaque logo. Lab reference and overlay keep this file. */
 export const BIT_REFERENCE_PATH = "/brand/bitmain.png";
-export const BIT_FALLBACK_MARK = BIT_REFERENCE_PATH;
+/** Transparent mark for production fallback, including noscript. */
+export const BIT_FALLBACK_MARK = "/brand/bitmain2.png";
 export const BIT_GLB_PATH = "/models/BIT.glb";
 
 export const BIT_BACKGROUND = "#070708";

@@ -14,8 +14,11 @@ import {
 import { BIT_EYE_LOOPS, eyeLoopArea } from "../apps/web/components/bit/bit-mascot.eyes.js";
 import { signedArea, traceCells } from "../apps/web/components/bit/bit-mascot.geometry.js";
 import {
+  cameraForProduction,
   cameraForViewport,
   clampIntensity,
+  productionHaloScale,
+  productionMarkFit,
   parseBitMascotState,
   referenceFrame,
   sampleMascotPose,
@@ -141,11 +144,22 @@ test("fallback and the lab use the canonical logo without a backend", () => {
   assert.equal(shouldUseFallback(false), true);
   assert.equal(shouldUseFallback(true), false);
   assert.equal(BIT_REFERENCE_PATH, "/brand/bitmain.png");
-  assert.equal(BIT_FALLBACK_MARK, BIT_REFERENCE_PATH);
+  assert.equal(BIT_FALLBACK_MARK, "/brand/bitmain2.png");
   assert.equal(BIT_GLB_PATH, "/models/BIT.glb");
   assert.deepEqual([...BIT_COMPARE_MODES], ["3D", "REFERENCE", "SPLIT", "OVERLAY"]);
   const png = readFileSync(new URL("../apps/web/public/brand/bitmain.png", import.meta.url));
   assert.equal(png.subarray(0, 4).toString("hex"), "89504e47");
+  const transparent = readFileSync(new URL("../apps/web/public/brand/bitmain2.png", import.meta.url));
+  assert.equal(transparent.subarray(0, 4).toString("hex"), "89504e47");
+  assert.equal(transparent[25], 6);
+  const mascot = readFileSync(new URL("../apps/web/components/bit/BitMascot3D.tsx", import.meta.url), "utf8");
+  const scene = readFileSync(new URL("../apps/web/components/bit/BitScene.tsx", import.meta.url), "utf8");
+  const production = readFileSync(new URL("../apps/web/components/bit/BitProduction.tsx", import.meta.url), "utf8");
+  assert.match(mascot, /alpha: true/);
+  assert.match(mascot, /setClearColor\(0x000000, 0\)/);
+  assert.equal(scene.includes('attach="background"'), false);
+  assert.match(production, /BIT_FALLBACK_MARK/);
+  assert.equal(production.includes("bitmain.png"), false);
   const desktop = cameraForViewport(1440, 900);
   const yaw = (Math.atan2(desktop.x, desktop.z) * 180) / Math.PI;
   assert.ok(yaw > 2 && yaw < 5, `desktop yaw ${yaw}`);
@@ -180,6 +194,56 @@ test("fallback and the lab use the canonical logo without a backend", () => {
   }
 });
 
+test("production framing matches the transparent mark and leaves the lab camera alone", () => {
+  const fit = productionMarkFit(1, 1);
+  assert.ok(fit.scale > 0.6 && fit.scale < 0.75, `fit ${fit.scale}`);
+  assert.ok(fit.offsetY < 0);
+  const lab = cameraForViewport(1440, 900);
+  const home = cameraForProduction(1440, 900);
+  const yaw = (camera: { x: number; z: number }) => Math.atan2(camera.x, camera.z);
+  assert.ok(yaw(home) < yaw(lab));
+  assert.ok(yaw(home) > 0);
+  const mobile = cameraForProduction(390, 700);
+  assert.ok(yaw(mobile) < yaw(home));
+  assert.equal(EVENT_DURATION_MS.BUY, 680);
+  assert.equal(EVENT_DURATION_MS.SELL, 740);
+  assert.equal(EVENT_DURATION_MS.BURN, 840);
+  assert.equal(EVENT_DURATION_MS.DEX_PAID, 920);
+  assert.equal(EVENT_DURATION_MS.NOTICE, 640);
+  const production = readFileSync(new URL("../apps/web/components/bit/BitProduction.tsx", import.meta.url), "utf8");
+  const labPage = readFileSync(new URL("../apps/web/components/bit/BitLab.tsx", import.meta.url), "utf8");
+  const scene = readFileSync(new URL("../apps/web/components/bit/BitScene.tsx", import.meta.url), "utf8");
+  assert.match(production, /production/);
+  assert.equal(labPage.includes("productionMarkFit"), false);
+  assert.equal(labPage.includes("cameraForProduction"), false);
+  assert.match(scene, /production \? cameraForProduction/);
+  assert.match(scene, /productionMarkFit/);
+  assert.equal(scene.includes('attach="background"'), false);
+  const mascot = readFileSync(new URL("../apps/web/components/bit/BitMascot3D.tsx", import.meta.url), "utf8");
+  assert.match(mascot, /alpha: true/);
+  assert.match(mascot, /setClearColor\(0x000000, 0\)/);
+});
+
+test("production halo fades inside the stage", () => {
+  const fit = productionMarkFit(1, 1);
+  const body = 23 * 0.22 * fit.scale;
+  const restPlane = productionHaloScale(fit.scale, 1) * 16;
+  const burnGlow = productionHaloScale(fit.scale, 1.32) * 16 * 0.7;
+  const stage = 24 * 0.22 * 1.16;
+  assert.ok(Math.abs((restPlane * 0.7) / body - 1.25) < 0.02);
+  assert.ok(restPlane < stage);
+  assert.ok(burnGlow < stage);
+  const scene = readFileSync(new URL("../apps/web/components/bit/BitScene.tsx", import.meta.url), "utf8");
+  assert.match(scene, /tight=\{production\}/);
+  assert.match(scene, /addColorStop\(0\.7/);
+  assert.equal(scene.includes('attach="background"'), false);
+  const mascot = readFileSync(new URL("../apps/web/components/bit/BitMascot3D.tsx", import.meta.url), "utf8");
+  assert.match(mascot, /alpha: true/);
+  assert.match(mascot, /setClearColor\(0x000000, 0\)/);
+  const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.bit-production-stage \{[^}]*background: transparent/s);
+});
+
 test("production homepage consumes the visual feed and keeps the lab manual", () => {
   const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
   const production = readFileSync(new URL("../apps/web/components/bit/BitProduction.tsx", import.meta.url), "utf8");
@@ -187,8 +251,9 @@ test("production homepage consumes the visual feed and keeps the lab manual", ()
   assert.match(page, /<BitProduction \/>/);
   assert.match(page, /HEYBIT/);
   assert.match(page, /BIT is waking up\./);
-  assert.match(page, /BIT runtime:/);
-  assert.match(page, /Official mint:/);
+  assert.match(page, /<BitStatus/);
+  assert.equal(page.includes("BIT runtime:"), false);
+  assert.equal(page.includes("Official mint:"), false);
   assert.equal(page.includes("Development foundation"), false);
   assert.equal(page.includes("This is not the live BIT website."), false);
   assert.equal(page.includes("setTimeout"), false);

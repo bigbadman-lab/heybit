@@ -151,6 +151,9 @@ export function createBitVisualController() {
       busy = false;
       intensity = 0;
     },
+    activeCueId(): string | null {
+      return active?.event.id ?? null;
+    },
     sample(nowMs: number): VisualPose {
       if (active) {
         const duration = EVENT_DURATION_MS[active.event.kind] ?? 0;

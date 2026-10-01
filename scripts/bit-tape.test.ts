@@ -48,7 +48,7 @@ test("homepage tape shares the visual feed and the lab stays clear", () => {
   const mascot = readFileSync(new URL("../apps/web/components/bit/BitMascot3D.tsx", import.meta.url), "utf8");
   assert.match(page, /<BitVisualFeed>/);
   assert.match(page, /<BitEventTape \/>/);
-  assert.ok(page.indexOf("Official mint:") < page.indexOf("<BitEventTape />"));
+  assert.ok(page.indexOf("<BitEventTape />") < page.indexOf("<BitStatus"));
   assert.match(tape, /Waiting for activity…/);
   assert.match(tape, /Live feed unavailable\./);
   assert.match(tape, /aria-live="polite"/);

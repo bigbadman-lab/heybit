@@ -18,9 +18,10 @@ export interface BitFeedModel {
   pose: VisualPose;
   status: BitFeedStatus;
   events: readonly VisualEvent[];
+  cueId: string | null;
 }
 
-const pendingFeed: BitFeedModel = { pose: idleVisualPose(), status: "pending", events: [] };
+const pendingFeed: BitFeedModel = { pose: idleVisualPose(), status: "pending", events: [], cueId: null };
 
 const BitFeedContext = createContext<BitFeedModel | null>(null);
 
@@ -35,7 +36,7 @@ export function useBitVisualPose(): VisualPose {
 }
 
 export function useBitFeed(): BitFeedModel {
-  return useContext(BitFeedContext) ?? { pose: idleVisualPose(), status: "unavailable", events: [] };
+  return useContext(BitFeedContext) ?? { pose: idleVisualPose(), status: "unavailable", events: [], cueId: null };
 }
 
 function useSharedBitFeed(): BitFeedModel {
@@ -49,11 +50,12 @@ function useSharedBitFeed(): BitFeedModel {
 
     const publish = (status: BitFeedStatus, events: readonly VisualEvent[]) => {
       const pose = controller.sample(rehearsal ? performance.now() : Date.now());
+      const cueId = controller.activeCueId();
       if (cancelled) {
         return;
       }
       setModel((current) =>
-        sameFeed(current, { pose, status, events }) ? current : { pose, status, events },
+        sameFeed(current, { pose, status, events, cueId }) ? current : { pose, status, events, cueId },
       );
     };
 
@@ -142,10 +144,11 @@ function useSharedBitFeed(): BitFeedModel {
             return current;
           }
           const pose = controller.sample(Date.now());
-          if (current.pose.state === pose.state && current.pose.intensity === pose.intensity) {
+          const cueId = controller.activeCueId();
+          if (current.pose.state === pose.state && current.pose.intensity === pose.intensity && current.cueId === cueId) {
             return current;
           }
-          return { ...current, pose };
+          return { ...current, pose, cueId };
         });
       }
     }, 100);
@@ -160,7 +163,12 @@ function useSharedBitFeed(): BitFeedModel {
 }
 
 function sameFeed(current: BitFeedModel, next: BitFeedModel): boolean {
-  if (current.status !== next.status || current.pose.state !== next.pose.state || current.pose.intensity !== next.pose.intensity) {
+  if (
+    current.status !== next.status ||
+    current.pose.state !== next.pose.state ||
+    current.pose.intensity !== next.pose.intensity ||
+    current.cueId !== next.cueId
+  ) {
     return false;
   }
   if (current.events.length !== next.events.length) {

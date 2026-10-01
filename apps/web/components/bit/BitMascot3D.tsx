@@ -16,6 +16,7 @@ export function BitMascot3D({
   resetSignal = 0,
   replaySignal = 0,
   loop = false,
+  production = false,
 }: {
   state?: string;
   intensity?: number;
@@ -25,6 +26,7 @@ export function BitMascot3D({
   resetSignal?: number;
   replaySignal?: number;
   loop?: boolean;
+  production?: boolean;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
@@ -36,7 +38,7 @@ export function BitMascot3D({
   const showCanvas = webgl === true && !shouldUseFallback(webgl);
 
   return (
-    <div className={className ?? "bit-stage"}>
+    <div className={`${className ?? "bit-stage"}${sceneReady ? " is-live" : ""}`}>
       <BitFallback />
       {showCanvas ? (
         <div className={sceneReady ? "bit-canvas-layer is-ready" : "bit-canvas-layer"}>
@@ -48,6 +50,7 @@ export function BitMascot3D({
             resetSignal={resetSignal}
             replaySignal={replaySignal}
             loop={loop}
+            production={production}
             onReady={() => setSceneReady(true)}
           />
         </div>
@@ -64,6 +67,7 @@ function BitCanvas({
   resetSignal,
   replaySignal,
   loop,
+  production,
   onReady,
 }: {
   state: string;
@@ -73,6 +77,7 @@ function BitCanvas({
   resetSignal: number;
   replaySignal: number;
   loop: boolean;
+  production: boolean;
   onReady: () => void;
 }) {
   const [Canvas, setCanvas] = useState<typeof import("@react-three/fiber").Canvas | null>(null);
@@ -98,9 +103,12 @@ function BitCanvas({
     <Canvas
       camera={{ position: [initialCamera.x, initialCamera.y, initialCamera.z], fov: 32 }}
       dpr={[1, 1.5]}
-      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+      gl={{ antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: "high-performance" }}
       frameloop={reducedMotion ? "demand" : "always"}
-      onCreated={onReady}
+      onCreated={(state) => {
+        state.gl.setClearColor(0x000000, 0);
+        onReady();
+      }}
       tabIndex={-1}
     >
       <BitScene
@@ -111,6 +119,7 @@ function BitCanvas({
         resetSignal={resetSignal}
         replaySignal={replaySignal}
         loop={loop}
+        production={production}
       />
     </Canvas>
   );
