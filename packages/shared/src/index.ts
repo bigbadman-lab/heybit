@@ -56,6 +56,11 @@ export class BitRuntimeError extends Error {
 }
 
 const MINT_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+/** Structural Solana address check used by the canonical mint column. */
+export function isCanonicalMint(value: unknown): value is string {
+  return typeof value === "string" && MINT_PATTERN.test(value);
+}
 const SCHEMA_ERROR_CODES = new Set(["PGRST205", "42P01", "PGRST204"]);
 
 interface RuntimeQueryResult {
@@ -131,7 +136,7 @@ function parseMint(value: unknown): string | null {
   if (value === null) {
     return null;
   }
-  if (typeof value !== "string" || !MINT_PATTERN.test(value)) {
+  if (!isCanonicalMint(value)) {
     throw new BitRuntimeError("malformed");
   }
   return value;

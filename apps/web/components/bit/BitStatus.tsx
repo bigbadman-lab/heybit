@@ -9,6 +9,8 @@ import {
   runtimeLabel,
   selectPhrase,
 } from "./bit-commentary";
+import { marketStatus } from "./bit-market";
+import { BitTokenActions } from "./BitTokenActions";
 import { useBitFeed } from "./use-bit-visual";
 
 export function BitStatus({
@@ -36,6 +38,7 @@ export function BitStatus({
   const facts = [
     ["RUNTIME", runtimeLabel(launchState)],
     ["MINT", mintLabel(mint, runtimeKnown)],
+    ["MARKET", marketStatus(launchState, runtimeKnown)],
     ["STATE", state],
     ["FEED", feedLabel(feed.status)],
   ] as const;
@@ -51,6 +54,7 @@ export function BitStatus({
         ))}
       </dl>
       <p key={phrase} className="bit-commentary">{phrase}</p>
+      <BitTokenActions launchState={launchState} mint={mint} />
     </section>
   );
 }

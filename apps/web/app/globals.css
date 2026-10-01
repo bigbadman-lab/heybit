@@ -355,7 +355,46 @@ main.bit-lab {
   }
 }
 
+.bit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+.bit-actions a,
+.bit-actions button {
+  margin: 0;
+  padding: 0.28rem 0.45rem;
+  border: 1px solid rgba(243, 240, 232, 0.22);
+  background: transparent;
+  color: rgba(243, 240, 232, 0.78);
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bit-actions a:hover,
+.bit-actions button:hover,
+.bit-actions a:focus-visible,
+.bit-actions button:focus-visible {
+  border-color: rgba(243, 240, 232, 0.7);
+  color: #f3f0e8;
+  outline: 1px solid rgba(243, 240, 232, 0.7);
+  outline-offset: 2px;
+}
+
 @media (max-width: 700px) {
+  .bit-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   main.home {
     --bit-column: 16rem;
     padding-top: 0.75rem;
