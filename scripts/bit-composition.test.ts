@@ -8,12 +8,13 @@ test("homepage composition keeps one column and the existing surfaces", () => {
   const feed = readFileSync(new URL("../apps/web/components/bit/use-bit-visual.tsx", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
   const order = [
+    'className="eyebrow"',
     "<BitProduction />",
     "<BitReactionContext />",
-    'className="eyebrow"',
-    "<h1>BIT is waking up.</h1>",
+    "<BitSpeech />",
     "<BitEventTape />",
     "<BitStatus",
+    "<BitPrompt />",
   ];
   let cursor = -1;
   for (const marker of order) {
@@ -21,13 +22,16 @@ test("homepage composition keeps one column and the existing surfaces", () => {
     assert.ok(index > cursor, marker);
     cursor = index;
   }
+  for (const rejected of ["HOW BIT WORKS", "BIT HAS STATES", "THE SYSTEM", "HomeLower", "home-lower"]) {
+    assert.equal(page.includes(rejected), false, rejected);
+  }
   assert.equal(page.includes("BIT runtime:"), false);
   assert.equal(page.includes("Official mint:"), false);
   for (const forbidden of ["wallet", "chart", "hamburger", "swap"]) {
     assert.equal(page.toLowerCase().includes(forbidden), false);
   }
-  assert.match(css, /--bit-column: 22rem/);
-  assert.match(css, /--bit-column: 20rem/);
+  assert.match(css, /--bit-column: 27\.5rem/);
+  assert.match(css, /--bit-column: 24rem/);
   assert.match(css, /--bit-column: 16rem/);
   assert.equal(feed.split('fetch("/api/bit-visual"').length - 1, 1);
   assert.equal(labPage.includes("BitReactionContext"), false);

@@ -33,11 +33,11 @@ test("homepage market row reuses the runtime snapshot and adds no market infrast
   assert.equal((page.match(/canonicalMint/g) ?? []).length, 1);
 
   const runtimeIndex = status.indexOf('["RUNTIME"');
-  const mintIndex = status.indexOf('["MINT"');
   const marketIndex = status.indexOf('["MARKET"');
-  const stateIndex = status.indexOf('["STATE"');
+  const mintIndex = status.indexOf('["MINT"');
   const feedIndex = status.indexOf('["FEED"');
-  assert.ok(runtimeIndex < mintIndex && mintIndex < marketIndex && marketIndex < stateIndex && stateIndex < feedIndex);
+  assert.ok(runtimeIndex < marketIndex && marketIndex < mintIndex && mintIndex < feedIndex);
+  assert.equal(status.includes('["STATE"'), false);
   assert.match(status, /marketStatus\(launchState, runtimeKnown\)/);
   assert.equal(status.includes("aria-live"), false);
   assert.equal(status.includes("fetch("), false);

@@ -72,6 +72,7 @@ test("status facts come from runtime and the shared feed", () => {
 
   const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
   const status = readFileSync(new URL("../apps/web/components/bit/BitStatus.tsx", import.meta.url), "utf8");
+  const speech = readFileSync(new URL("../apps/web/components/bit/BitSpeech.tsx", import.meta.url), "utf8");
   const feed = readFileSync(new URL("../apps/web/components/bit/use-bit-visual.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
@@ -83,7 +84,8 @@ test("status facts come from runtime and the shared feed", () => {
   assert.equal(page.includes("BIT runtime:"), false);
   assert.equal(page.includes("Official mint:"), false);
   assert.match(status, /useBitFeed/);
-  assert.match(status, /feed\.pose\.state/);
+  assert.match(speech, /feed\.pose\.state/);
+  assert.match(speech, /selectPhrase/);
   assert.equal(status.includes("fetch("), false);
   assert.equal(status.includes("openai"), false);
   assert.equal(status.includes('aria-live="assertive"'), false);

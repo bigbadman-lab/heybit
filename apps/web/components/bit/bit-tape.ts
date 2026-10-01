@@ -32,6 +32,15 @@ export function tapeKindLabel(kind: string): string {
   return kind;
 }
 
+export function formatTapeClock(atMs: number | undefined): string | null {
+  if (typeof atMs !== "number" || !Number.isFinite(atMs)) {
+    return null;
+  }
+  const date = new Date(atMs);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 export function formatTapeAge(atMs: number | undefined, nowMs: number): string {
   if (atMs === undefined || !Number.isFinite(atMs) || !Number.isFinite(nowMs)) {
     return "now";

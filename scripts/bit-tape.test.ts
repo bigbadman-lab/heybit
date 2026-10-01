@@ -49,7 +49,7 @@ test("homepage tape shares the visual feed and the lab stays clear", () => {
   assert.match(page, /<BitVisualFeed>/);
   assert.match(page, /<BitEventTape \/>/);
   assert.ok(page.indexOf("<BitEventTape />") < page.indexOf("<BitStatus"));
-  assert.match(tape, /Waiting for activity…/);
+  assert.match(tape, /no activity\./);
   assert.match(tape, /Live feed unavailable\./);
   assert.match(tape, /aria-live="polite"/);
   assert.equal(tape.includes('aria-live="assertive"'), false);
