@@ -33,10 +33,11 @@ main.home {
   --bit-md: 1.15rem;
   --bit-lg: 1.7rem;
   --bit-xl: 2.4rem;
-  max-width: 40rem;
+  max-width: none;
+  width: 100%;
   min-height: 100vh;
-  margin: 0 auto;
-  padding: var(--bit-lg) 1.5rem var(--bit-xl);
+  margin: 0;
+  padding: 0 0 var(--bit-xl);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -55,33 +56,33 @@ main.home {
 }
 
 .site-header {
-  width: min(100%, var(--bit-column, 22rem));
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "brand x"
-    "nav nav";
+  align-self: stretch;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin-bottom: var(--bit-lg);
+  background: #070708;
+  border-bottom: 1px solid rgba(243, 240, 232, 0.16);
+}
+
+.site-header-bar {
+  width: min(100%, 40rem);
+  margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+  display: flex;
   align-items: center;
-  gap: 0.45rem 0.75rem;
-  container-type: inline-size;
-}
-
-.site-header .eyebrow {
-  grid-area: brand;
-  justify-self: start;
-}
-
-.site-header .bit-x {
-  grid-area: x;
-  justify-self: end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
 }
 
 .site-nav {
-  grid-area: nav;
   display: flex;
+  flex: 1;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.85rem;
+  justify-content: flex-end;
+  gap: 0.35rem 1rem;
   min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.72rem;
@@ -104,17 +105,6 @@ main.home {
   color: #f3f0e8;
   outline: 1px solid rgba(243, 240, 232, 0.7);
   outline-offset: 3px;
-}
-
-@container (min-width: 24rem) {
-  .site-header {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "brand nav x";
-  }
-
-  .site-nav {
-    justify-content: flex-end;
-  }
 }
 
 main.home .eyebrow {
@@ -570,8 +560,19 @@ main.bit-lab {
 
   main.home {
     --bit-column: 16rem;
-    padding-top: var(--bit-md);
+    padding-top: 0;
     padding-bottom: var(--bit-lg);
+  }
+
+  .site-header-bar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .site-nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
   }
 
   main.home h1 {

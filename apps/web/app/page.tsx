@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BitAsk } from "../components/bit/BitAsk";
 import { BitEventTape } from "../components/bit/BitEventTape";
 import { BitLifecycle } from "../components/bit/BitLifecycle";
@@ -40,9 +41,9 @@ export default async function HomePage() {
         />
         <BitPrompt />
         <nav className="bit-factory" aria-label="Agent factory">
-          <a href="/create">CREATE YOUR AGENT</a>
+          <Link href="/create">CREATE YOUR AGENT</Link>
           <p>give your token a BIT.</p>
-          <a href="/agents">VIEW AGENTS</a>
+          <Link href="/agents">VIEW AGENTS</Link>
         </nav>
       </BitVisualFeed>
     </main>
