@@ -310,6 +310,11 @@ main.bit-lab {
   color: rgba(243, 240, 232, 0.96);
 }
 
+.bit-tape-row.is-history .bit-tape-kind,
+.bit-tape-row.is-history .bit-tape-age {
+  color: rgba(243, 240, 232, 0.42);
+}
+
 .bit-tape-age {
   font-variant-numeric: tabular-nums;
   color: rgba(243, 240, 232, 0.62);

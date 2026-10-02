@@ -27,7 +27,7 @@ test("launch status formats PRELAUNCH without inventing a mint", () => {
   assert.match(text, /Runtime row \.+ PASS/);
   assert.match(text, /Trade listener \.+ IDLE/);
   assert.match(text, /Queue capacity \.+ READY/);
-  assert.match(text, /Concurrency \.+ 8/);
+  assert.match(text, /Concurrency \.+ 3/);
   assert.match(text, /Backpressure \.+ READY/);
   assert.match(text, /OpenAI \.+ PASS/);
   assert.match(text, /Reaction pipeline \.+ READY/);

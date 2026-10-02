@@ -1,5 +1,5 @@
 import { BitRuntimeError, getBitRuntime, type BitRuntime, type BitRuntimeFailure } from "@heybit/shared";
-import { PROCESSOR_CONCURRENCY } from "@heybit/shared/ingest";
+import { WORKER_FETCH_CONCURRENCY } from "../../apps/worker/src/monitor.js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RuntimeReadResult =
@@ -48,7 +48,7 @@ export function formatLaunchStatus(
       line("Trade listener", "IDLE"),
       "",
       line("Queue capacity", "READY"),
-      line("Concurrency", String(PROCESSOR_CONCURRENCY)),
+      line("Concurrency", String(WORKER_FETCH_CONCURRENCY)),
       line("Backpressure", "READY"),
       "",
       line("OpenAI", reactions.openai),
@@ -84,7 +84,7 @@ export function formatLaunchStatus(
     line("Trade listener", listener),
     "",
     line("Queue capacity", "READY"),
-    line("Concurrency", String(PROCESSOR_CONCURRENCY)),
+    line("Concurrency", String(WORKER_FETCH_CONCURRENCY)),
     line("Backpressure", "READY"),
     "",
     line("OpenAI", reactions.openai),

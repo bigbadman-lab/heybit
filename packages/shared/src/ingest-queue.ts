@@ -3,12 +3,24 @@ export const QUEUE_CAPACITY = 2_000;
 export const QUEUE_LOW_WATER = 500;
 export const RECENT_SIGNATURE_LIMIT = 5_000;
 export const MAX_PROCESS_ATTEMPTS = 3;
-export const RETRY_BACKOFF_MS = [200, 800, 2_000] as const;
 
-export type StepResult =
-  | { kind: "done" }
-  | { kind: "retry"; reason: "rpc" | "unavailable" | "supabase" }
-  | { kind: "permanent" };
+export type RetryReason = "rpc" | "unavailable" | "supabase" | "rate_limited";
+
+export type StepResult = { kind: "done" } | { kind: "retry"; reason: RetryReason } | { kind: "permanent" };
+
+const RETRY_DELAYS_MS: Record<RetryReason, readonly number[]> = {
+  unavailable: [2_000, 6_000, 12_000],
+  rate_limited: [1_000, 4_000, 12_000],
+  rpc: [500, 2_000, 6_000],
+  supabase: [400, 1_200, 4_000],
+};
+
+/** Bounded delay for one retry. Jitter is deterministic so tests can assert the shape. */
+export function retryDelayMs(attempt: number, reason: RetryReason): number {
+  const steps = RETRY_DELAYS_MS[reason];
+  const base = steps[Math.min(Math.max(attempt, 1), steps.length) - 1] ?? steps[steps.length - 1] ?? 2_000;
+  return base + Math.floor(base * 0.1 * ((attempt * 3) % 4));
+}
 
 export interface QueueMetrics {
   depth: number;
@@ -20,6 +32,7 @@ export interface QueueMetrics {
   duplicates: number;
   retries: number;
   failures: number;
+  dropped: number;
   paused: boolean;
   backlogged: boolean;
   delayed: number;
@@ -49,7 +62,9 @@ export class IngestQueue<T> {
   private duplicates = 0;
   private retries = 0;
   private failures = 0;
+  private dropped = 0;
   private paused = false;
+  private limitedUntil = 0;
   private delayed = 0;
   private readonly idleWaiters: Array<() => void> = [];
 
@@ -58,7 +73,8 @@ export class IngestQueue<T> {
   private readonly lowWater: number;
   private readonly recentLimit: number;
   private readonly maxAttempts: number;
-  private readonly delay: (attempt: number) => Promise<void>;
+  private readonly highWater: number;
+  private readonly delay: (attempt: number, reason: RetryReason) => Promise<void>;
 
   constructor(
     private readonly options: {
@@ -68,7 +84,8 @@ export class IngestQueue<T> {
       lowWater?: number;
       recentLimit?: number;
       maxAttempts?: number;
-      delay?: (attempt: number) => Promise<void>;
+      highWater?: number;
+      delay?: (attempt: number, reason: RetryReason) => Promise<void>;
       onCapacity?: (paused: boolean) => void;
     },
   ) {
@@ -77,11 +94,11 @@ export class IngestQueue<T> {
     this.lowWater = options.lowWater ?? QUEUE_LOW_WATER;
     this.recentLimit = options.recentLimit ?? RECENT_SIGNATURE_LIMIT;
     this.maxAttempts = options.maxAttempts ?? MAX_PROCESS_ATTEMPTS;
+    this.highWater = options.highWater ?? this.capacity;
     this.delay =
       options.delay ??
-      (async (attempt) => {
-        const wait = RETRY_BACKOFF_MS[Math.min(attempt, RETRY_BACKOFF_MS.length) - 1] ?? 2_000;
-        await new Promise((resolve) => setTimeout(resolve, wait));
+      (async (attempt, reason) => {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs(attempt, reason)));
       });
   }
 
@@ -91,13 +108,14 @@ export class IngestQueue<T> {
       return "duplicate";
     }
     if (this.pending.length >= this.capacity) {
+      this.dropped += 1;
       this.markPaused(true);
       return "paused";
     }
     this.remember(signature);
     this.pending.push({ signature, payload, attempt: 1 });
     this.noteDepth();
-    if (this.pending.length >= this.capacity) {
+    if (this.pending.length >= this.highWater) {
       this.markPaused(true);
     }
     this.fill();
@@ -115,8 +133,9 @@ export class IngestQueue<T> {
       duplicates: this.duplicates,
       retries: this.retries,
       failures: this.failures,
+      dropped: this.dropped,
       paused: this.paused,
-      backlogged: this.pending.length > 0 && this.active >= this.concurrency,
+      backlogged: this.pending.length > 0 && this.active >= this.effectiveConcurrency(),
       delayed: this.delayed,
       recentCacheSize: this.recentSet.size,
     };
@@ -144,7 +163,7 @@ export class IngestQueue<T> {
   }
 
   private fill(): void {
-    while (this.active < this.concurrency && this.pending.length > 0) {
+    while (this.active < this.effectiveConcurrency() && this.pending.length > 0) {
       const job = this.pending.shift();
       if (!job) {
         break;
@@ -166,9 +185,12 @@ export class IngestQueue<T> {
     }
 
     if (result.kind === "retry" && job.attempt < this.maxAttempts) {
+      if (result.reason === "rate_limited") {
+        this.limitedUntil = Date.now() + 8_000;
+      }
       this.retries += 1;
       this.delayed += 1;
-      void this.delay(job.attempt).then(() => {
+      void this.delay(job.attempt, result.reason).then(() => {
         this.delayed -= 1;
         this.pending.push({ ...job, attempt: job.attempt + 1 });
         this.noteDepth();
@@ -183,6 +205,13 @@ export class IngestQueue<T> {
 
     this.active -= 1;
     this.fill();
+  }
+
+  private effectiveConcurrency(): number {
+    if (Date.now() < this.limitedUntil) {
+      return 1;
+    }
+    return this.concurrency;
   }
 
   private noteDepth(): void {

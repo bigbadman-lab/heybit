@@ -9,6 +9,7 @@ export function BitEventTape() {
   const rows = tapeRows(feed.events);
   const now = useTapeNow(feed.status === "live" && rows.length > 0);
   const seen = useRef<Set<string> | null>(null);
+  const [historyIds, setHistoryIds] = useState<ReadonlySet<string>>(new Set());
   const rowsRef = useRef(rows);
   const [freshIds, setFreshIds] = useState<ReadonlySet<string>>(new Set());
   const [announcement, setAnnouncement] = useState("");
@@ -22,6 +23,7 @@ export function BitEventTape() {
     const ids = signature === "" ? [] : signature.split("\n");
     if (seen.current === null) {
       seen.current = new Set(ids);
+      setHistoryIds(new Set(ids));
       return;
     }
     const arrived = ids.filter((id) => !seen.current?.has(id));
@@ -50,7 +52,7 @@ export function BitEventTape() {
       ) : (
         <ol className="bit-tape-list">
           {rows.map((row) => (
-            <li key={row.id} className={tapeRowClass(row.id, freshIds, activeTapeId(feed.cueId, rows))}>
+            <li key={row.id} className={tapeRowClass(row.id, freshIds, historyIds, activeTapeId(feed.cueId, rows))}>
               <span className="bit-tape-kind">{tapeKindLabel(row.kind)}</span>
               <span className="bit-tape-age">{formatTapeClock(row.atMs) ?? (now === null ? "\u00a0" : formatTapeAge(row.atMs, now))}</span>
             </li>
@@ -61,8 +63,16 @@ export function BitEventTape() {
   );
 }
 
-function tapeRowClass(id: string, freshIds: ReadonlySet<string>, activeId: string | null): string {
+function tapeRowClass(
+  id: string,
+  freshIds: ReadonlySet<string>,
+  historyIds: ReadonlySet<string>,
+  activeId: string | null,
+): string {
   const names = ["bit-tape-row"];
+  if (historyIds.has(id)) {
+    names.push("is-history");
+  }
   if (freshIds.has(id)) {
     names.push("is-new");
   }

@@ -93,17 +93,36 @@ export interface ReactionDraft {
   activityLevel: ActivityLevel | null;
 }
 
+export interface ReactionWrite {
+  status: ReactionStatus;
+  text: string | null;
+  model: string | null;
+  generatedAtMs: number | null;
+  reactionType: ReactionDraft["reactionType"];
+  sourceMode: ReactionMode;
+  eventCount: number;
+  activityLevel: ActivityLevel | null;
+  windowStartMs: number | null;
+  windowEndMs: number | null;
+}
+
 export interface ReactionStore {
   claim(draft: ReactionDraft): Promise<"owned" | "duplicate">;
-  finish(
-    sourceKey: string,
-    patch: { status: ReactionStatus; text: string | null; model: string | null; generatedAtMs: number | null },
-  ): Promise<void>;
+  finish(sourceKey: string, patch: ReactionWrite): Promise<void>;
 }
 
 export type InferenceResult =
   | { ok: true; text: string }
   | { ok: false; transient: boolean; reason: "timeout" | "rate_limit" | "empty" | "invalid" | "prohibited" | "unavailable" };
+
+export interface ReactionCauseCounts {
+  reaction_claim_error: number;
+  reaction_prompt_error: number;
+  openai_request_error: number;
+  openai_response_error: number;
+  reaction_store_error: number;
+  fallback_store_error: number;
+}
 
 export interface SchedulerMetrics {
   queueDepth: number;
@@ -116,6 +135,7 @@ export interface SchedulerMetrics {
   failures: number;
   degraded: boolean;
   windows: number;
+  causes: ReactionCauseCounts;
 }
 
 const PROHIBITED = [
@@ -307,6 +327,14 @@ export class ReactionScheduler {
   private fallbackUsedWhileOpen = false;
   private speaking = false;
   private suspended = false;
+  private readonly causes: ReactionCauseCounts = {
+    reaction_claim_error: 0,
+    reaction_prompt_error: 0,
+    openai_request_error: 0,
+    openai_response_error: 0,
+    reaction_store_error: 0,
+    fallback_store_error: 0,
+  };
 
   constructor(
     private readonly options: {
@@ -373,6 +401,7 @@ export class ReactionScheduler {
       failures: this.failures,
       degraded: this.circuitOpen(this.options.now()),
       windows: this.windows,
+      causes: { ...this.causes },
     };
   }
 
@@ -423,7 +452,14 @@ export class ReactionScheduler {
     this.openaiActive += 1;
     this.maxOpenaiActive = Math.max(this.maxOpenaiActive, this.openaiActive);
     try {
-      const claim = await this.options.store.claim(draftFrom(summary));
+      let claim: "owned" | "duplicate";
+      try {
+        claim = await this.options.store.claim(draftFrom(summary));
+      } catch {
+        this.causes.reaction_claim_error += 1;
+        this.failures += 1;
+        return;
+      }
       if (claim === "duplicate") {
         this.done.add(summary.sourceKey);
         return;
@@ -439,8 +475,16 @@ export class ReactionScheduler {
           return;
         }
         this.attempts += 1;
+        let facts: ReturnType<typeof reactionFacts>;
         try {
-          outcome = await this.options.infer(reactionFacts(summary));
+          facts = reactionFacts(summary);
+        } catch {
+          this.causes.reaction_prompt_error += 1;
+          await this.storeFallback(summary, now, true);
+          return;
+        }
+        try {
+          outcome = await this.options.infer(facts);
         } catch {
           outcome = { ok: false, transient: true, reason: "unavailable" };
         }
@@ -454,12 +498,10 @@ export class ReactionScheduler {
             await this.storeFallback(summary, now, true);
             return;
           }
-          await this.options.store.finish(summary.sourceKey, {
-            status: "GENERATED",
-            text: validated.text,
-            model: BIT_REACTION_MODEL,
-            generatedAtMs: now,
-          });
+          const stored = await this.storeGenerated(summary, validated.text, BIT_REACTION_MODEL, now);
+          if (!stored) {
+            return;
+          }
           this.successes += 1;
           this.consecutiveFailures = 0;
           this.done.add(summary.sourceKey);
@@ -468,11 +510,11 @@ export class ReactionScheduler {
           }
           return;
         }
+        this.noteInferenceFailure(outcome.reason);
         if (!outcome.transient) {
           break;
         }
       }
-      this.failures += 1;
       this.consecutiveFailures += 1;
       if (this.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
         this.circuitOpenUntil = now + CIRCUIT_OPEN_MS;
@@ -492,12 +534,14 @@ export class ReactionScheduler {
     this.done.add(summary.sourceKey);
     try {
       await this.options.store.finish(summary.sourceKey, {
+        ...storedFields(summary),
         status: "EXPIRED",
         text: null,
         model: null,
         generatedAtMs: now,
       });
     } catch {
+      this.causes.reaction_store_error += 1;
       this.failures += 1;
     }
   }
@@ -517,6 +561,7 @@ export class ReactionScheduler {
           return;
         }
       } catch {
+        this.causes.reaction_claim_error += 1;
         this.failures += 1;
         return;
       }
@@ -524,21 +569,28 @@ export class ReactionScheduler {
     const text = fallbackText(summary);
     const validated = validateReactionText(text);
     if (!validated.ok) {
-      await this.options.store.finish(summary.sourceKey, {
+      const failed = await this.storeStatus(summary, {
         status: "FAILED",
         text: null,
         model: null,
         generatedAtMs: now,
       });
+      if (!failed) {
+        return;
+      }
       this.done.add(summary.sourceKey);
       return;
     }
-    await this.options.store.finish(summary.sourceKey, {
+    const stored = await this.storeStatus(summary, {
       status: "GENERATED",
       text: validated.text,
       model: "deterministic-fallback",
       generatedAtMs: now,
     });
+    if (!stored) {
+      this.causes.fallback_store_error += 1;
+      return;
+    }
     this.successes += 1;
     this.done.add(summary.sourceKey);
     if (summary.kind === "activity") {
@@ -555,13 +607,46 @@ export class ReactionScheduler {
         return;
       }
       await this.options.store.finish(summary.sourceKey, {
+        ...storedFields(summary),
         status: "EXPIRED",
         text: null,
         model: null,
         generatedAtMs: now,
       });
     } catch {
+      this.causes.reaction_store_error += 1;
       this.failures += 1;
+    }
+  }
+
+  private noteInferenceFailure(reason: "timeout" | "rate_limit" | "empty" | "invalid" | "prohibited" | "unavailable"): void {
+    if (reason === "empty" || reason === "invalid" || reason === "prohibited") {
+      this.causes.openai_response_error += 1;
+      return;
+    }
+    this.causes.openai_request_error += 1;
+  }
+
+  private async storeGenerated(summary: ReactionSummary, text: string, model: string, now: number): Promise<boolean> {
+    return this.storeStatus(summary, {
+      status: "GENERATED",
+      text,
+      model,
+      generatedAtMs: now,
+    });
+  }
+
+  private async storeStatus(
+    summary: ReactionSummary,
+    patch: { status: ReactionStatus; text: string | null; model: string | null; generatedAtMs: number | null },
+  ): Promise<boolean> {
+    try {
+      await this.options.store.finish(summary.sourceKey, { ...storedFields(summary), ...patch });
+      return true;
+    } catch {
+      this.causes.reaction_store_error += 1;
+      this.failures += 1;
+      return false;
     }
   }
 
@@ -619,6 +704,18 @@ function summarizeGroup(start: number, events: TradeFact[], closedAtMs: number):
     activityLevel,
     eventCount,
     createdAtMs: closedAtMs,
+  };
+}
+
+function storedFields(summary: ReactionSummary): Omit<ReactionWrite, "status" | "text" | "model" | "generatedAtMs"> {
+  const draft = draftFrom(summary);
+  return {
+    reactionType: draft.reactionType,
+    sourceMode: draft.sourceMode,
+    eventCount: draft.eventCount,
+    activityLevel: draft.activityLevel,
+    windowStartMs: draft.windowStartMs,
+    windowEndMs: draft.windowEndMs,
   };
 }
 

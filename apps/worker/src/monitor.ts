@@ -10,6 +10,67 @@ import { createLiveReactions, type LiveReactions } from "./reactions.js";
 import { formatWorkerStatus, loadWorkerRuntime, openWorkerSupabase, type WorkerRuntimeRead } from "./runtime.js";
 
 export const RUNTIME_POLL_MS = 5_000;
+export const WORKER_FETCH_CONCURRENCY = 3;
+export const WORKER_QUEUE_CAPACITY = 800;
+export const WORKER_QUEUE_HIGH_WATER = 400;
+export const WORKER_QUEUE_LOW_WATER = 120;
+
+export interface IngestCauseCounts {
+  rpc_fetch_null: number;
+  rpc_rate_limited: number;
+  rpc_fetch_error: number;
+  db_insert_error: number;
+  queue_dropped: number;
+}
+
+export function classifyRpcFailure(error: unknown): "rate_limited" | "rpc" {
+  const status = statusOf(error);
+  if (status === 429) {
+    return "rate_limited";
+  }
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("429") || message.toLowerCase().includes("too many requests")) {
+    return "rate_limited";
+  }
+  return "rpc";
+}
+
+export function signatureStep(input: {
+  ready: boolean;
+  live: boolean;
+  fetched: "null" | "rate_limited" | "error" | "transaction";
+  outcome: "trade" | "ignored" | "failed" | "duplicate" | "unavailable" | "retry" | null;
+}): { step: StepResult; cause: keyof IngestCauseCounts | null } {
+  if (!input.ready) {
+    return { step: { kind: "retry", reason: "supabase" }, cause: "db_insert_error" };
+  }
+  if (!input.live) {
+    return { step: { kind: "done" }, cause: null };
+  }
+  if (input.fetched === "null" || input.outcome === "unavailable") {
+    return { step: { kind: "retry", reason: "unavailable" }, cause: "rpc_fetch_null" };
+  }
+  if (input.fetched === "rate_limited") {
+    return { step: { kind: "retry", reason: "rate_limited" }, cause: "rpc_rate_limited" };
+  }
+  if (input.fetched === "error") {
+    return { step: { kind: "retry", reason: "rpc" }, cause: "rpc_fetch_error" };
+  }
+  if (input.outcome === "retry") {
+    return { step: { kind: "retry", reason: "supabase" }, cause: "db_insert_error" };
+  }
+  return { step: { kind: "done" }, cause: null };
+}
+
+function statusOf(error: unknown): number {
+  if (typeof error === "object" && error !== null && "status" in error && typeof error.status === "number") {
+    return error.status;
+  }
+  if (typeof error === "object" && error !== null && "code" in error && error.code === 429) {
+    return 429;
+  }
+  return 0;
+}
 
 export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise<void> {
   const config = readAlchemyConfig(env);
@@ -22,7 +83,18 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
   const reactions = createLiveReactions(env, client);
   let listener: MintLogListener | null = null;
 
+  const causes: IngestCauseCounts = {
+    rpc_fetch_null: 0,
+    rpc_rate_limited: 0,
+    rpc_fetch_error: 0,
+    db_insert_error: 0,
+    queue_dropped: 0,
+  };
   const queue = new IngestQueue<string>({
+    concurrency: WORKER_FETCH_CONCURRENCY,
+    capacity: WORKER_QUEUE_CAPACITY,
+    highWater: WORKER_QUEUE_HIGH_WATER,
+    lowWater: WORKER_QUEUE_LOW_WATER,
     onCapacity: (paused) => {
       if (paused) {
         listener?.pauseIntake();
@@ -30,7 +102,7 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
       }
       listener?.resumeIntake();
     },
-    process: (signature) => processSignature(signature, env, ledger, connection, reactions),
+    process: (signature) => processSignature(signature, env, ledger, connection, reactions, causes),
   });
 
   listener = config
@@ -67,6 +139,9 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
       listener: listenerMode,
       reason: gate.reason,
       queue: metrics,
+      causes: { ...causes, queue_dropped: metrics.dropped },
+      socket: listener?.snapshot() ?? { ws_disconnect: 0, ws_reconnect: 0 },
+      reactionCauses: reactionMetrics.causes,
       processing: processingLabel({
         listenerIdle: listenerMode === "IDLE",
         alchemyReady,
@@ -111,44 +186,61 @@ async function processSignature(
   ledger: TransactionLedger | null,
   connection: ReturnType<typeof createReadOnlyConnection> | null,
   reactions: LiveReactions,
+  causes: IngestCauseCounts,
 ): Promise<StepResult> {
   if (!ledger || !connection) {
-    return { kind: "retry", reason: "supabase" };
+    return counted(causes, signatureStep({ ready: false, live: false, fetched: "transaction", outcome: null }));
   }
   const runtime = await loadWorkerRuntime(env);
   const gate = listenerForRuntime(runtime);
-  if (gate.listener !== "ACTIVE" || runtime.status !== "ok" || !runtime.runtime.canonicalMint) {
+  const live = gate.listener === "ACTIVE" && runtime.status === "ok" && runtime.runtime.canonicalMint !== null;
+  if (!live || runtime.status !== "ok" || !runtime.runtime.canonicalMint) {
     return { kind: "done" };
   }
   const observedAt = new Date().toISOString();
+  let response: Awaited<ReturnType<typeof connection.getTransaction>> | null = null;
   try {
-    const response = await connection.getTransaction(signature, {
+    response = await connection.getTransaction(signature, {
       commitment: "confirmed",
       maxSupportedTransactionVersion: 0,
     });
-    const tx = fromConfirmedTransaction(signature, response);
-    const outcome = await safelyProcessObservedTransaction({
-      tx,
-      mint: runtime.runtime.canonicalMint,
-      observedAt,
-      ledger,
-    });
-    if (outcome === "unavailable") {
-      return { kind: "retry", reason: "unavailable" };
-    }
-    if (outcome === "retry") {
-      return { kind: "retry", reason: "supabase" };
-    }
-    if (outcome === "trade" && tx) {
-      const parsed = parseTrade(tx, runtime.runtime.canonicalMint, observedAt);
-      if (parsed.kind === "trade") {
-        reactions.note(parsed.event);
-      }
-    }
-    return { kind: "done" };
-  } catch {
-    return { kind: "retry", reason: "rpc" };
+  } catch (error) {
+    const fetched = classifyRpcFailure(error) === "rate_limited" ? "rate_limited" : "error";
+    return counted(causes, signatureStep({ ready: true, live: true, fetched, outcome: null }));
   }
+  if (!response) {
+    return counted(causes, signatureStep({ ready: true, live: true, fetched: "null", outcome: null }));
+  }
+  const tx = fromConfirmedTransaction(signature, response);
+  const outcome = await safelyProcessObservedTransaction({
+    tx,
+    mint: runtime.runtime.canonicalMint,
+    observedAt,
+    ledger,
+  });
+  const decision = signatureStep({
+    ready: true,
+    live: true,
+    fetched: "transaction",
+    outcome,
+  });
+  if (decision.step.kind === "done" && outcome === "trade" && tx) {
+    const parsed = parseTrade(tx, runtime.runtime.canonicalMint, observedAt);
+    if (parsed.kind === "trade") {
+      reactions.note(parsed.event);
+    }
+  }
+  return counted(causes, decision);
+}
+
+function counted(
+  causes: IngestCauseCounts,
+  decision: { step: StepResult; cause: keyof IngestCauseCounts | null },
+): StepResult {
+  if (decision.cause && decision.cause !== "queue_dropped") {
+    causes[decision.cause] += 1;
+  }
+  return decision.step;
 }
 
 export function idleSnapshot(runtime: WorkerRuntimeRead): {

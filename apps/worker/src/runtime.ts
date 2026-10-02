@@ -48,10 +48,28 @@ export function formatWorkerStatus(snapshot: {
   queue?: {
     depth: number;
     active: number;
+    concurrency?: number;
     processed: number;
     duplicates: number;
     retries: number;
     failures: number;
+    dropped?: number;
+  };
+  causes?: {
+    rpc_fetch_null: number;
+    rpc_rate_limited: number;
+    rpc_fetch_error: number;
+    db_insert_error: number;
+    queue_dropped: number;
+  };
+  socket?: { ws_disconnect: number; ws_reconnect: number };
+  reactionCauses?: {
+    reaction_claim_error: number;
+    reaction_prompt_error: number;
+    openai_request_error: number;
+    openai_response_error: number;
+    reaction_store_error: number;
+    fallback_store_error: number;
   };
   processing?: "IDLE" | "ACTIVE" | "BACKLOGGED" | "DEGRADED";
   reactions?: {
@@ -72,7 +90,24 @@ export function formatWorkerStatus(snapshot: {
         : snapshot.runtime.runtime.launchState;
   const mint = snapshot.runtime.status === "ok" ? (snapshot.runtime.runtime.canonicalMint ?? "none") : "none";
   const queue = snapshot.queue ?? { depth: 0, active: 0, processed: 0, duplicates: 0, retries: 0, failures: 0 };
+  const causes = snapshot.causes ?? {
+    rpc_fetch_null: 0,
+    rpc_rate_limited: 0,
+    rpc_fetch_error: 0,
+    db_insert_error: 0,
+    queue_dropped: queue.dropped ?? 0,
+  };
+  const socket = snapshot.socket ?? { ws_disconnect: 0, ws_reconnect: 0 };
+  const reactionCauses = snapshot.reactionCauses ?? {
+    reaction_claim_error: 0,
+    reaction_prompt_error: 0,
+    openai_request_error: 0,
+    openai_response_error: 0,
+    reaction_store_error: 0,
+    fallback_store_error: 0,
+  };
   const processing = snapshot.processing ?? (snapshot.listener === "IDLE" ? "IDLE" : "ACTIVE");
+  const lanes = queue.concurrency ?? PROCESSOR_CONCURRENCY;
   const reactions = snapshot.reactions ?? {
     scheduler: "IDLE" as const,
     openai: "READY" as const,
@@ -91,12 +126,19 @@ export function formatWorkerStatus(snapshot: {
     `trade listener: ${snapshot.listener}`,
     `reason: ${snapshot.reason}`,
     `queue depth: ${queue.depth}`,
-    `active processors: ${queue.active}/${PROCESSOR_CONCURRENCY}`,
+    `active processors: ${queue.active}/${lanes}`,
     `processing: ${processing}`,
     `processed: ${queue.processed}`,
     `duplicates: ${queue.duplicates}`,
     `retries: ${queue.retries}`,
     `failures: ${queue.failures}`,
+    `queue dropped: ${causes.queue_dropped}`,
+    `rpc fetch null: ${causes.rpc_fetch_null}`,
+    `rpc rate limited: ${causes.rpc_rate_limited}`,
+    `rpc fetch error: ${causes.rpc_fetch_error}`,
+    `db insert error: ${causes.db_insert_error}`,
+    `ws disconnect: ${socket.ws_disconnect}`,
+    `ws reconnect: ${socket.ws_reconnect}`,
     `reaction scheduler: ${reactions.scheduler}`,
     `openai: ${reactions.openai}`,
     `reaction queue: ${reactions.queueDepth}`,
@@ -104,6 +146,12 @@ export function formatWorkerStatus(snapshot: {
     `recent reactions: ${reactions.recentReactions}`,
     `recent expired: ${reactions.recentExpired}`,
     `recent failures: ${reactions.recentFailures}`,
+    `reaction claim error: ${reactionCauses.reaction_claim_error}`,
+    `reaction prompt error: ${reactionCauses.reaction_prompt_error}`,
+    `openai request error: ${reactionCauses.openai_request_error}`,
+    `openai response error: ${reactionCauses.openai_response_error}`,
+    `reaction store error: ${reactionCauses.reaction_store_error}`,
+    `fallback store error: ${reactionCauses.fallback_store_error}`,
   ].join("\n");
 }
 

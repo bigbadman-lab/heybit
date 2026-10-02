@@ -19,9 +19,17 @@ export function createSupabaseReactionStore(client: SupabaseClient): ReactionSto
       return Array.isArray(data) && data.length > 0 ? "owned" : "duplicate";
     },
     async finish(sourceKey, patch) {
+      // The insert candidate must include every NOT NULL column. PostgreSQL checks
+      // those columns before ON CONFLICT DO UPDATE, so a partial row stays PENDING.
       const { error } = await client.from(BIT_REACTIONS_TABLE).upsert(
         {
           source_key: sourceKey,
+          reaction_type: patch.reactionType,
+          source_mode: patch.sourceMode,
+          source_window_start: patch.windowStartMs === null ? null : new Date(patch.windowStartMs).toISOString(),
+          source_window_end: patch.windowEndMs === null ? null : new Date(patch.windowEndMs).toISOString(),
+          source_event_count: patch.eventCount,
+          activity_level: patch.activityLevel,
           status: patch.status,
           text: patch.text,
           model: patch.model,

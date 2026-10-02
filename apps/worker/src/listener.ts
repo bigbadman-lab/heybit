@@ -13,6 +13,9 @@ export class MintLogListener {
   private stopped = true;
   private intakePaused = false;
   private attempt = 0;
+  private disconnects = 0;
+  private reconnects = 0;
+  private socketGeneration = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -56,7 +59,11 @@ export class MintLogListener {
     }
     this.intakePaused = false;
     this.attempt = 0;
-    this.connect();
+    this.scheduleReconnect();
+  }
+
+  snapshot(): { ws_disconnect: number; ws_reconnect: number } {
+    return { ws_disconnect: this.disconnects, ws_reconnect: this.reconnects };
   }
 
   private connect(): void {
@@ -64,6 +71,7 @@ export class MintLogListener {
       return;
     }
     const mint = this.mint;
+    const generation = ++this.socketGeneration;
     let socket: WebSocket;
     try {
       socket = new WebSocket(this.wssUrl);
@@ -91,9 +99,10 @@ export class MintLogListener {
       }
     });
     socket.addEventListener("close", () => {
-      if (this.stopped || this.intakePaused) {
+      if (generation !== this.socketGeneration || this.stopped || this.intakePaused) {
         return;
       }
+      this.disconnects += 1;
       this.onMode("RECONNECTING");
       this.scheduleReconnect();
     });
@@ -107,10 +116,12 @@ export class MintLogListener {
       return;
     }
     this.attempt += 1;
+    this.reconnects += 1;
     this.timer = setTimeout(() => this.connect(), reconnectDelayMs(this.attempt));
   }
 
   private stopSocket(): void {
+    this.socketGeneration += 1;
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
