@@ -85,6 +85,8 @@ export interface ReactionFacts {
   eventType?: OperatorEventType;
   eventId?: string;
   context?: AgentPromptContext;
+  /** Allowlisted personality preset. Ignored unless it matches a factory preset. */
+  style?: string;
 }
 
 export interface ReactionDraft {

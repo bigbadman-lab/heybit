@@ -7,6 +7,7 @@ import { listenerForRuntime } from "./health.js";
 import { createSupabaseLedger } from "./ledger.js";
 import { MintLogListener, type ListenerMode } from "./listener.js";
 import { createLiveReactions, type LiveReactions } from "./reactions.js";
+import { startAgentRoster } from "./agent-roster.js";
 import { formatWorkerStatus, loadWorkerRuntime, openWorkerSupabase, type WorkerRuntimeRead } from "./runtime.js";
 
 export const RUNTIME_POLL_MS = 5_000;
@@ -173,6 +174,10 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
     }
   };
 
+  const roster = client && config
+    ? startAgentRoster({ client, connection, wssUrl: config.wssUrl })
+    : null;
+
   await tick();
   const timer = setInterval(() => {
     void tick();
@@ -182,6 +187,7 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
     const stop = () => {
       clearInterval(timer);
       listener?.stop();
+      roster?.stop();
       void queue.drain().then(() => resolve());
     };
     process.on("SIGINT", stop);

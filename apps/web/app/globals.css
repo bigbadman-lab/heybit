@@ -588,6 +588,85 @@ h1 {
   margin: 0.5rem 0 1rem;
 }
 
+.bit-factory {
+  width: min(100%, var(--bit-column, 22rem));
+  margin-top: var(--bit-lg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.bit-factory a {
+  color: #f3f0e8;
+}
+
+.bit-factory p {
+  margin: 0.35rem 0;
+  color: rgba(243, 240, 232, 0.62);
+}
+
+main.factory {
+  background: #070708;
+  color: #f3f0e8;
+  min-height: 100vh;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.factory-form,
+.agent-room,
+.agent-directory {
+  display: grid;
+  gap: 0.8rem;
+  width: min(100%, 27.5rem);
+}
+
+.factory-form input,
+.factory-form button,
+.factory-choices button,
+.agent-room button {
+  font: inherit;
+  color: #f3f0e8;
+  background: transparent;
+  border: 1px solid rgba(243, 240, 232, 0.28);
+  padding: 0.4rem 0.5rem;
+}
+
+.factory-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.factory-form button[aria-pressed="true"] {
+  border-color: #f3f0e8;
+}
+
+.factory-preview,
+.agent-mint,
+.agent-speech {
+  color: rgba(243, 240, 232, 0.78);
+}
+
+.agent-directory {
+  list-style: none;
+  padding: 0;
+}
+
+.agent-directory li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.accent-acid { --agent-accent: #d6ff4a; }
+.accent-bone { --agent-accent: #f3f0e8; }
+.accent-signal { --agent-accent: #8eb6ff; }
+.accent-ember { --agent-accent: #ff8a5b; }
+
+.agent-room h1 {
+  color: var(--agent-accent, #f3f0e8);
+}
+
 .bit-lifecycle,
 .bit-state,
 .bit-ask {

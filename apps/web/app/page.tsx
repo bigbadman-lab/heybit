@@ -48,6 +48,11 @@ export default async function HomePage() {
           runtimeKnown={presence.runtimeKnown}
         />
         <BitPrompt />
+        <nav className="bit-factory" aria-label="Agent factory">
+          <a href="/create">CREATE YOUR AGENT</a>
+          <p>give your token a BIT.</p>
+          <a href="/agents">VIEW AGENTS</a>
+        </nav>
       </BitVisualFeed>
     </main>
   );

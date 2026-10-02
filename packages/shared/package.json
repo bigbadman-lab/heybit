@@ -11,6 +11,7 @@
     "./stress": "./src/stress.ts",
     "./reaction": "./src/reaction.ts",
     "./agent": "./src/agent.ts",
+    "./factory": "./src/factory.ts",
     "./rehearsal": "./src/rehearsal.ts",
     "./reaction-stress": "./src/reaction-stress.ts"
   },

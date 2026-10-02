@@ -1,3 +1,4 @@
+import { isPersonality, personalityTone } from "@heybit/shared/factory";
 import {
   BIT_PERSONALITY_PROMPT,
   BIT_REACTION_MODEL,
@@ -18,6 +19,13 @@ export interface OpenAiCheck {
   verdict: "PASS" | "FAIL";
 }
 
+export function reactionInstructions(style: string | undefined): string {
+  if (!style || !isPersonality(style)) {
+    return BIT_PERSONALITY_PROMPT;
+  }
+  return `${BIT_PERSONALITY_PROMPT} ${personalityTone(style)}`;
+}
+
 export async function requestBitReaction(apiKey: string, facts: ReactionFacts): Promise<InferenceResult> {
   if (apiKey.trim() === "") {
     return { ok: false, transient: false, reason: "unavailable" };
@@ -26,7 +34,7 @@ export async function requestBitReaction(apiKey: string, facts: ReactionFacts): 
   try {
     const response = await client.responses.create({
       model: BIT_REACTION_MODEL,
-      instructions: BIT_PERSONALITY_PROMPT,
+      instructions: reactionInstructions(facts.style),
       input: JSON.stringify(facts),
       store: false,
       max_output_tokens: 80,

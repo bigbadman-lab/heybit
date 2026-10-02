@@ -60,6 +60,7 @@ const REQUIRED_PATHS = [
   "supabase/migrations/20261002130000_create_bit_rehearsal.sql",
   "supabase/migrations/20261002160000_create_bit_public_speech.sql",
   "supabase/migrations/20261002190000_create_bit_public_agent.sql",
+  "supabase/migrations/20261002200000_create_bit_agents.sql",
   "package.json",
 ];
 
