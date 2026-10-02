@@ -14,7 +14,7 @@ import {
   type AgentTradeInput,
 } from "@heybit/shared/agent";
 import { BIT_PERSONALITY_PROMPT, createMemoryReactionStore, ReactionScheduler } from "@heybit/shared/reaction";
-import { introCanYield, introLines, shouldStartIntro } from "../apps/web/components/bit/bit-intro.js";
+import { INTRO_HOLD_MS, introCanYield, introLines, shouldStartIntro } from "../apps/web/components/bit/bit-intro.js";
 import { agentActivityRows, memoryDetail } from "../apps/web/components/bit/bit-stream.js";
 
 const NOW = Date.parse("2026-10-02T16:00:00.000Z");
@@ -33,6 +33,7 @@ test("intro plays once per session and yields to a live reaction", () => {
   assert.equal(introCanYield(false, "LIVE", "a buy landed."), false);
   assert.equal(introCanYield(true, "LIVE", "a buy landed."), true);
   assert.equal(introCanYield(true, "PRELAUNCH", "a buy landed."), false);
+  assert.ok(INTRO_HOLD_MS >= 3_000);
 });
 
 test("agent mood, trend, and silence stay deterministic", () => {

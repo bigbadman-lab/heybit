@@ -1,4 +1,7 @@
 export const INTRO_SESSION_KEY = "heybit.intro.seen";
+/** How long the finished intro stays before the market line replaces it. */
+export const INTRO_HOLD_MS = 3_600;
+export const INTRO_FADE_MS = 560;
 
 export const PRELAUNCH_INTRO = [
   "oh. hello.",

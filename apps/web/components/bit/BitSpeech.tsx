@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { commentarySeed, idleCommentaryActive, IDLE_COMMENTARY_MS, spokenLine } from "./bit-commentary";
-import { INTRO_SESSION_KEY, introCanYield, introLines, shouldStartIntro } from "./bit-intro";
+import { INTRO_FADE_MS, INTRO_HOLD_MS, INTRO_SESSION_KEY, introCanYield, introLines, shouldStartIntro } from "./bit-intro";
 import { useBitFeed } from "./use-bit-visual";
 
 const CHAR_MS = 28;
@@ -13,6 +13,7 @@ export function BitSpeech() {
   const [idleTick, setIdleTick] = useState(0);
   const [introText, setIntroText] = useState<string | null>(null);
   const [introDone, setIntroDone] = useState(false);
+  const [dim, setDim] = useState(false);
   const started = useRef(false);
   const firstLineDone = useRef(false);
   const speechRef = useRef(feed.speech);
@@ -56,24 +57,56 @@ export function BitSpeech() {
     let charIndex = 0;
     let pauseUntil = 0;
     let timer = 0;
-    const finish = () => {
-      window.clearInterval(timer);
+    let holdTimer = 0;
+    let holding = false;
+    let released = false;
+    const remember = () => {
       try {
         window.sessionStorage.setItem(INTRO_SESSION_KEY, "1");
       } catch {
         // Session memory is optional. The intro still ends.
       }
-      if (!cancelled) {
+    };
+    const release = (immediate: boolean) => {
+      if (released || cancelled) {
+        return;
+      }
+      released = true;
+      window.clearInterval(timer);
+      window.clearTimeout(holdTimer);
+      remember();
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (immediate || reduced) {
+        setDim(false);
         setIntroText(null);
         setIntroDone(true);
+        return;
       }
+      setDim(true);
+      holdTimer = window.setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+        setIntroText(null);
+        setIntroDone(true);
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            if (!cancelled) {
+              setDim(false);
+            }
+          });
+        });
+      }, INTRO_FADE_MS);
     };
     timer = window.setInterval(() => {
-      if (cancelled || Date.now() < pauseUntil) {
+      if (cancelled) {
         return;
       }
       if (introCanYield(firstLineDone.current, launchState, speechRef.current)) {
-        finish();
+        release(true);
+        return;
+      }
+      if (holding || Date.now() < pauseUntil) {
         return;
       }
       const line = lines[lineIndex] ?? "";
@@ -87,7 +120,9 @@ export function BitSpeech() {
         lineIndex += 1;
         charIndex = 0;
         if (lineIndex >= lines.length) {
-          finish();
+          holding = true;
+          remember();
+          holdTimer = window.setTimeout(() => release(false), INTRO_HOLD_MS);
         } else {
           pauseUntil = Date.now() + LINE_GAP_MS;
         }
@@ -96,6 +131,7 @@ export function BitSpeech() {
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      window.clearTimeout(holdTimer);
     };
   }, [feed.presence, launchState]);
 
@@ -103,7 +139,10 @@ export function BitSpeech() {
   const phrase = showingIntro ? introText : spoken.text;
 
   return (
-    <h1 key={showingIntro ? "intro" : phrase} className={showingIntro || spoken.source !== "reaction" ? "bit-speech bit-commentary" : "bit-speech"}>
+    <h1
+      key={showingIntro || dim ? "intro" : phrase}
+      className={`${showingIntro || spoken.source !== "reaction" ? "bit-speech bit-commentary" : "bit-speech"}${dim ? " is-dim" : ""}`}
+    >
       {phrase}
     </h1>
   );

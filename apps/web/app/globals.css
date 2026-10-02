@@ -415,6 +415,14 @@ main.bit-lab {
   overflow-wrap: anywhere;
 }
 
+.bit-speech {
+  transition: opacity 560ms ease;
+}
+
+.bit-speech.is-dim {
+  opacity: 0;
+}
+
 .bit-commentary {
   margin: 1rem 0 0;
   font-family: ui-sans-serif, system-ui, sans-serif;
@@ -426,6 +434,12 @@ main.bit-lab {
 @media (prefers-reduced-motion: no-preference) {
   .bit-commentary {
     animation: bit-commentary-in 180ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bit-speech {
+    transition: none;
   }
 }
 
