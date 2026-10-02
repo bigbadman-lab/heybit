@@ -42,7 +42,7 @@ The local homepage still shows PRELAUNCH, the BIT intro path, and the new factor
 
 Checks cover mint shape, wallet shape, name length, slug shape, the six personalities, the avatar and accent allowlists, and status. Indexes cover slug uniqueness, token mint, owner wallet, and status. `bit_runtime` is not altered.
 
-Anon has no grants on the base tables. Public views are `bit_public_agents`, `bit_public_agent_trades`, and `bit_public_agent_lines`. They omit the owner wallet, internal ids, signatures, prompts, and models.
+Anon has no grants on the base tables. Public views are `bit_public_agents`, `bit_public_token_agent_trades`, and `bit_public_agent_lines`. They omit the owner wallet, internal ids, signatures, prompts, and models. `bit_public_agent_trades` stays the canonical BIT market view.
 
 ## 6. Ownership/auth model
 

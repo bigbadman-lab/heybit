@@ -22,7 +22,9 @@ test("reaction context sits under BIT and does not add a second feed", () => {
   const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
   const lab = readFileSync(new URL("../apps/web/components/bit/BitLab.tsx", import.meta.url), "utf8");
-  assert.ok(page.indexOf('className="eyebrow"') < page.indexOf("<BitProduction />"));
+  const header = readFileSync(new URL("../apps/web/components/site/SiteHeader.tsx", import.meta.url), "utf8");
+  assert.match(header, /className="eyebrow"/);
+  assert.ok(page.indexOf("<SiteHeader") < page.indexOf("<BitProduction />"));
   assert.ok(page.indexOf("<BitProduction />") < page.indexOf("<BitReactionContext />"));
   assert.ok(page.indexOf("<BitEventTape />") < page.indexOf("<BitStatus"));
   assert.match(context, /useBitFeed/);

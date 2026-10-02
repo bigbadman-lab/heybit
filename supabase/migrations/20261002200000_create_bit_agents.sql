@@ -67,7 +67,8 @@ select slug, name, token_mint, personality, avatar_key, accent_key, status, crea
 from public.bit_agents
 where status = 'ACTIVE';
 
-create or replace view public.bit_public_agent_trades
+-- Separate from bit_public_agent_trades, which is the canonical BIT market view.
+create or replace view public.bit_public_token_agent_trades
 with (security_invoker = false) as
 select agent_slug as slug, event_type, sol_amount, observed_at
 from public.bit_agent_activity
@@ -81,8 +82,8 @@ where status = 'GENERATED'
   and text is not null;
 
 revoke all on table public.bit_public_agents from public, anon, authenticated;
-revoke all on table public.bit_public_agent_trades from public, anon, authenticated;
+revoke all on table public.bit_public_token_agent_trades from public, anon, authenticated;
 revoke all on table public.bit_public_agent_lines from public, anon, authenticated;
 grant select on table public.bit_public_agents to anon, authenticated;
-grant select on table public.bit_public_agent_trades to anon, authenticated;
+grant select on table public.bit_public_token_agent_trades to anon, authenticated;
 grant select on table public.bit_public_agent_lines to anon, authenticated;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { AgentRoom } from "../../../components/factory/AgentRoom";
+import { SiteHeader } from "../../../components/site/SiteHeader";
 import { readPublicAgentProfile } from "../../../lib/public-factory";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +15,9 @@ export default async function AgentPage({ params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const profile = await readPublicAgentProfile(slug);
   return (
-    <main className="factory">
-      <p className="eyebrow"><Link href="/">HEYBIT</Link></p>
-      {profile ? <AgentRoom profile={profile} /> : <p>This agent is not available.</p>}
+    <main className="home factory">
+      <SiteHeader current="agents" />
+      {profile ? <AgentRoom profile={profile} /> : <p className="factory-lead">This agent is not available.</p>}
     </main>
   );
 }

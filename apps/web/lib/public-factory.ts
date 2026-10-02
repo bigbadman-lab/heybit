@@ -43,7 +43,7 @@ export async function readAgentState(slug: string, nowMs = Date.now()): Promise<
   try {
     const client = createPublicServerClient();
     const [trades, lines] = await Promise.all([
-      client.from("bit_public_agent_trades").select("event_type, sol_amount, observed_at").eq("slug", slug).limit(200),
+      client.from("bit_public_token_agent_trades").select("event_type, sol_amount, observed_at").eq("slug", slug).limit(200),
       client.from("bit_public_agent_lines").select("text, generated_at").eq("slug", slug).limit(5),
     ]);
     if (trades.error) {

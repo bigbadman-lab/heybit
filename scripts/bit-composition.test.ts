@@ -7,8 +7,9 @@ test("homepage composition keeps one column and the existing surfaces", () => {
   const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
   const feed = readFileSync(new URL("../apps/web/components/bit/use-bit-visual.tsx", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../apps/web/components/site/SiteHeader.tsx", import.meta.url), "utf8");
   const order = [
-    'className="eyebrow"',
+    "<SiteHeader",
     "<BitProduction />",
     "<BitReactionContext />",
     "<BitSpeech />",
@@ -28,11 +29,15 @@ test("homepage composition keeps one column and the existing surfaces", () => {
   for (const rejected of ["HOW BIT WORKS", "BIT HAS STATES", "THE SYSTEM", "HomeLower", "home-lower"]) {
     assert.equal(page.includes(rejected), false, rejected);
   }
-  assert.match(page, /href="https:\/\/x\.com\/bitdotfun"/);
+  assert.match(header, /className="eyebrow"/);
+  assert.match(header, /href="https:\/\/x\.com\/bitdotfun"/);
+  assert.match(header, /CREATE YOUR AGENT/);
+  assert.match(header, /VIEW AGENTS/);
   assert.equal(page.includes("BIT runtime:"), false);
   assert.equal(page.includes("Official mint:"), false);
   for (const forbidden of ["wallet", "chart", "hamburger", "swap"]) {
     assert.equal(page.toLowerCase().includes(forbidden), false);
+    assert.equal(header.toLowerCase().includes(forbidden), false);
   }
   assert.match(css, /--bit-column: 27\.5rem/);
   assert.match(css, /--bit-column: 24rem/);

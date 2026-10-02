@@ -125,8 +125,10 @@ export function CreateAgent() {
         <p>{preview?.line}</p>
         <p>{preview?.intro.join(" ")}</p>
       </section>
-      {wallet ? <p>signed in</p> : <button type="button" onClick={() => void connect()}>SIGN IN</button>}
-      <button type="submit" disabled={pending || !wallet}>CREATE AGENT</button>
+      <div className="factory-actions">
+        {wallet ? <p className="factory-slug">signed in</p> : <button type="button" onClick={() => void connect()}>SIGN IN</button>}
+        <button type="submit" disabled={pending || !wallet}>CREATE AGENT</button>
+      </div>
       {error ? <p role="alert">{error}</p> : null}
     </form>
   );
