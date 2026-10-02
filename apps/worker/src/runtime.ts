@@ -1,5 +1,5 @@
 import { getBitRuntime, type BitRuntime } from "@heybit/shared";
-import { readRehearsal, resolveEffective } from "@heybit/shared/rehearsal";
+import { readRehearsal, resolveEffective, type RehearsalRecord } from "@heybit/shared/rehearsal";
 import { PROCESSOR_CONCURRENCY } from "@heybit/shared/ingest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { existsSync } from "node:fs";
@@ -22,22 +22,33 @@ export async function loadWorkerRuntime(env: NodeJS.ProcessEnv = process.env): P
     const client = createWorkerClient(url, key);
     const runtime = await getBitRuntime(client);
     if (runtime.launchState === "LIVE") {
-      return { status: "ok", runtime };
+      return { status: "ok", ...projectWorkerRuntime(runtime, null, Date.now()) };
     }
     const stored = await readRehearsal(client);
     const rehearsal = stored.status === "ready" ? stored.record : null;
-    const view = resolveEffective(runtime, rehearsal, Date.now());
-    if (view.mode === "REHEARSAL" && view.mint) {
-      return {
-        status: "ok",
-        label: "REHEARSAL",
-        runtime: { ...runtime, launchState: "LIVE", canonicalMint: view.mint },
-      };
-    }
-    return { status: "ok", runtime };
+    return { status: "ok", ...projectWorkerRuntime(runtime, rehearsal, Date.now()) };
   } catch {
     return { status: "unavailable" };
   }
+}
+
+/** Permanent LIVE wins. A rehearsal overlay is only applied while the row is still PRELAUNCH. */
+export function projectWorkerRuntime(
+  runtime: BitRuntime,
+  rehearsal: RehearsalRecord | null,
+  nowMs: number,
+): { runtime: BitRuntime; label?: "REHEARSAL" } {
+  if (runtime.launchState === "LIVE") {
+    return { runtime };
+  }
+  const view = resolveEffective(runtime, rehearsal, nowMs);
+  if (view.mode === "REHEARSAL" && view.mint) {
+    return {
+      label: "REHEARSAL",
+      runtime: { ...runtime, launchState: "LIVE", canonicalMint: view.mint },
+    };
+  }
+  return { runtime };
 }
 
 export function formatWorkerStatus(snapshot: {

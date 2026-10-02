@@ -1,3 +1,4 @@
+import type { AgentPromptContext } from "./agent.js";
 import type { OperatorEventType } from "./index.js";
 
 export const REACTION_WINDOW_MS = 8_000;
@@ -20,6 +21,8 @@ export const BIT_PERSONALITY_PROMPT = [
   "Speak in one short line. Two very short lines only when it helps.",
   "Be calm, observant, slightly strange, and concise.",
   "Describe only the confirmed past activity in the facts.",
+  "When context is present, use it. Do not repeat any recent line.",
+  "Do not invent a silence, a trend, or a direction the context does not state.",
   "Never tell anyone to buy, sell, or hold.",
   "Never shame a seller or encourage urgency.",
   "Never promise gains, predict a price, or give financial advice.",
@@ -81,6 +84,7 @@ export interface ReactionFacts {
   eventCount?: number;
   eventType?: OperatorEventType;
   eventId?: string;
+  context?: AgentPromptContext;
 }
 
 export interface ReactionDraft {
@@ -341,6 +345,7 @@ export class ReactionScheduler {
       now: () => number;
       store: ReactionStore;
       infer: (facts: ReactionFacts) => Promise<InferenceResult>;
+      remember?: () => Promise<AgentPromptContext | null>;
     },
   ) {}
 
@@ -478,6 +483,16 @@ export class ReactionScheduler {
         let facts: ReturnType<typeof reactionFacts>;
         try {
           facts = reactionFacts(summary);
+          if (this.options.remember) {
+            try {
+              const context = await this.options.remember();
+              if (context) {
+                facts = { ...facts, context: { ...context, recentLines: context.recentLines.slice(0, 5) } };
+              }
+            } catch {
+              // The current window is still enough to speak.
+            }
+          }
         } catch {
           this.causes.reaction_prompt_error += 1;
           await this.storeFallback(summary, now, true);

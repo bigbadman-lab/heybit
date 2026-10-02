@@ -107,13 +107,15 @@ test("a stored reaction is spoken only while presence is live", () => {
 
 test("the public speech path is a read of generated text and stays off prelaunch", () => {
   const route = readFileSync(new URL("../apps/web/app/api/bit-visual/route.ts", import.meta.url), "utf8");
+  const gate = readFileSync(new URL("../apps/web/lib/visible-speech.ts", import.meta.url), "utf8");
   const reader = readFileSync(new URL("../apps/web/lib/public-speech.ts", import.meta.url), "utf8");
   const migration = readFileSync(
     new URL("../supabase/migrations/20261002160000_create_bit_public_speech.sql", import.meta.url),
     "utf8",
   );
   const speech = readFileSync(new URL("../apps/web/components/bit/BitSpeech.tsx", import.meta.url), "utf8");
-  assert.match(route, /presence\.launchState === "LIVE"/);
+  assert.match(route, /visiblePublicSpeech\(presence, reactionText\)/);
+  assert.match(gate, /presence\.launchState === "LIVE"/);
   assert.equal(route.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
   assert.match(reader, /bit_public_speech/);
   assert.equal(reader.includes("SUPABASE_SERVICE_ROLE_KEY"), false);

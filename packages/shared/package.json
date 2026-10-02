@@ -10,6 +10,7 @@
     "./ingest": "./src/ingest-queue.ts",
     "./stress": "./src/stress.ts",
     "./reaction": "./src/reaction.ts",
+    "./agent": "./src/agent.ts",
     "./rehearsal": "./src/rehearsal.ts",
     "./reaction-stress": "./src/reaction-stress.ts"
   },

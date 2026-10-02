@@ -1,6 +1,7 @@
 import { createMemoryReactionStore, ReactionScheduler, type SchedulerMetrics } from "@heybit/shared/reaction";
 import type { BitTradeEvent } from "@heybit/shared/trade";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { rememberAgent } from "./agent-memory.js";
 import { requestBitReaction } from "./openai-reactions.js";
 import { createSupabaseReactionStore } from "./reaction-store.js";
 
@@ -17,6 +18,7 @@ export function createLiveReactions(env: NodeJS.ProcessEnv, client: SupabaseClie
     now: () => Date.now(),
     store,
     infer: (facts) => requestBitReaction(readKey(env), facts),
+    remember: client ? () => rememberAgent(client) : undefined,
   });
   scheduler.hold();
   return {

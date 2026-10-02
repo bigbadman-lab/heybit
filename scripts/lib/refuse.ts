@@ -1,9 +1,3 @@
-export const LAUNCH_ACTIVATE_MESSAGE = `BLOCKED
-
-Production launch activation is not implemented in Phase 1.
-No writes were performed.
-`;
-
 export const BIT_BURN_MESSAGE = `BLOCKED
 
 BIT burn tooling is not implemented or authorized in Phase 1.

@@ -81,6 +81,8 @@ test("preflight stays short of production launch approval", async () => {
   assert.match(text, /Reaction aggregation \.+ PASS/);
   assert.match(text, /Reaction idempotency \.+ FAIL/);
   assert.match(text, /Reaction stress \.+ PASS/);
+  assert.match(text, /Activation command \.+ IMPLEMENTED/);
+  assert.match(text, /Recovery command \.+ IMPLEMENTED/);
   assert.match(text, /Final website \.+ NOT IMPLEMENTED/);
   assert.match(text, /NOT PRODUCTION READY/);
   assert.match(text, /VERDICT: PHASE 4 BLOCKED/);

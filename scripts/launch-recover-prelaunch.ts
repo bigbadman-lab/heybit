@@ -2,17 +2,18 @@ import "./lib/bootstrap.js";
 import { getBitRuntime } from "@heybit/shared";
 import { isRehearsalEffective, readRehearsal } from "@heybit/shared/rehearsal";
 import {
-  activationHelp,
-  parseActivationArgs,
-  performActivation,
+  parseRecoveryArgs,
+  performRecovery,
+  recoveryHelp,
+  recoverySummary,
   serviceRoleConfigured,
   supabaseRuntimeWriter,
 } from "./lib/launch-control.js";
 import { createServiceRoleClient } from "./lib/supabase.js";
 
-const parsed = parseActivationArgs(process.argv.slice(2));
+const parsed = parseRecoveryArgs(process.argv.slice(2));
 if (parsed.kind === "help") {
-  process.stdout.write(activationHelp());
+  process.stdout.write(recoveryHelp());
   process.exit(0);
 }
 if (parsed.kind === "refuse") {
@@ -34,16 +35,12 @@ try {
 }
 
 const stored = await readRehearsal(client);
-if (stored.status === "unavailable") {
-  process.stderr.write("Rehearsal state is unavailable. Activation refused.\n");
-  process.exit(1);
-}
-
 const rehearsal = stored.status === "ready" ? stored.record : null;
-const outcome = await performActivation({
-  mint: parsed.mint,
+const rehearsalActive = stored.status === "unavailable" ? "UNKNOWN" : isRehearsalEffective(rehearsal, Date.now());
+process.stdout.write(`${recoverySummary(permanent, rehearsalActive)}\n`);
+
+const outcome = await performRecovery({
   permanent,
-  rehearsalActive: isRehearsalEffective(rehearsal, Date.now()),
   writer: supabaseRuntimeWriter(client),
 });
 if (outcome.exitCode === 0) {

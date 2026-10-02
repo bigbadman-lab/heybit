@@ -311,6 +311,7 @@ main.bit-lab {
 }
 
 .bit-tape-row.is-history .bit-tape-kind,
+.bit-tape-row.is-history .bit-tape-detail,
 .bit-tape-row.is-history .bit-tape-age {
   color: rgba(243, 240, 232, 0.42);
 }
@@ -571,4 +572,129 @@ h1 {
   font-size: 2rem;
   font-weight: 600;
   margin: 0.5rem 0 1rem;
+}
+
+.bit-lifecycle,
+.bit-state,
+.bit-ask {
+  width: min(100%, var(--bit-column, 22rem));
+  margin: var(--bit-sm) 0 0;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: rgba(243, 240, 232, 0.72);
+}
+
+.bit-lifecycle {
+  margin-top: var(--bit-md);
+  color: rgba(243, 240, 232, 0.5);
+}
+
+.bit-state p,
+.bit-ask-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--bit-sm);
+  margin: 0.2rem 0;
+}
+
+.bit-state span,
+.bit-ask-label {
+  color: rgba(243, 240, 232, 0.45);
+}
+
+.bit-ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.bit-ask-actions button {
+  font: inherit;
+  letter-spacing: 0.06em;
+  color: #f3f0e8;
+  background: transparent;
+  border: 1px solid rgba(243, 240, 232, 0.28);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+}
+
+.bit-ask-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.bit-ask-line {
+  display: block;
+  margin-top: 0.7rem;
+  color: #f3f0e8;
+}
+
+.bit-tape-detail {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bit-production-stage.bit-life-idle {
+    animation: bit-breath 4.8s ease-in-out infinite;
+  }
+
+  .bit-production-stage.bit-life-watching {
+    animation: bit-alert 3.4s ease-in-out infinite;
+  }
+
+  .bit-production-stage.bit-life-thinking {
+    animation: bit-think 1.8s ease-in-out infinite;
+  }
+
+  .bit-production-stage.bit-life-reacting {
+    animation: bit-react 0.7s ease-out 1;
+  }
+}
+
+@keyframes bit-breath {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes bit-alert {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.012);
+  }
+}
+
+@keyframes bit-think {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes bit-react {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
 }

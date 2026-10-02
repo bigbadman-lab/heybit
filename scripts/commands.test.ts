@@ -1,20 +1,25 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { BIT_BURN_MESSAGE, BIT_DEX_PAID_MESSAGE, LAUNCH_ACTIVATE_MESSAGE } from "./lib/refuse.js";
+import { isCanonicalMint } from "@heybit/shared";
+import { BIT_BURN_MESSAGE, BIT_DEX_PAID_MESSAGE } from "./lib/refuse.js";
 
-function runCommand(script: string): { status: number | null; stdout: string } {
-  const result = spawnSync("tsx", [script, "--confirm-production", "ExampleMint111111111111111111111111111111"], {
+const REJECTED_MINT = "ExampleMint111111111111111111111111111111";
+
+function runCommand(script: string): { status: number | null; stdout: string; stderr: string } {
+  const result = spawnSync("tsx", [script, "--confirm-production", REJECTED_MINT], {
     encoding: "utf8",
   });
-  return { status: result.status, stdout: result.stdout };
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
 test("mutation commands refuse and perform no writes", () => {
+  assert.equal(isCanonicalMint(REJECTED_MINT), false);
   const activate = runCommand("scripts/launch-activate.ts");
   assert.equal(activate.status, 1);
-  assert.equal(activate.stdout, LAUNCH_ACTIVATE_MESSAGE);
-  assert.equal(activate.stdout.includes("ExampleMint"), false);
+  assert.match(activate.stderr, /Mint format is invalid/);
+  assert.equal(activate.stdout.includes(REJECTED_MINT), false);
+  assert.equal(activate.stdout.includes("Read-back matched"), false);
 
   const burn = runCommand("scripts/bit-burn.ts");
   assert.equal(burn.status, 1);

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { BitAsk } from "../components/bit/BitAsk";
 import { BitEventTape } from "../components/bit/BitEventTape";
+import { BitLifecycle } from "../components/bit/BitLifecycle";
 import { BitProduction } from "../components/bit/BitProduction";
 import { BitPrompt } from "../components/bit/BitPrompt";
 import { BitReactionContext } from "../components/bit/BitReactionContext";
 import { BitSpeech } from "../components/bit/BitSpeech";
+import { BitState } from "../components/bit/BitState";
 import { BitStatus } from "../components/bit/BitStatus";
 import { BitVisualFeed } from "../components/bit/use-bit-visual";
 import { readPublicPresence } from "../lib/public-supabase";
@@ -35,6 +38,9 @@ export default async function HomePage() {
         <BitProduction />
         <BitReactionContext />
         <BitSpeech />
+        <BitLifecycle />
+        <BitState />
+        <BitAsk />
         <BitEventTape />
         <BitStatus
           launchState={presence.launchState}

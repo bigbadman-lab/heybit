@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { PublicAgent } from "@heybit/shared/agent";
 import {
   createBitVisualController,
   idleVisualPose,
@@ -27,6 +28,7 @@ export interface BitFeedModel {
   cueId: string | null;
   presence: BitPresence | null;
   speech: string | null;
+  agent: PublicAgent | null;
 }
 
 const pendingFeed: BitFeedModel = {
@@ -36,6 +38,7 @@ const pendingFeed: BitFeedModel = {
   cueId: null,
   presence: null,
   speech: null,
+  agent: null,
 };
 
 const BitFeedContext = createContext<BitFeedModel | null>(null);
@@ -58,6 +61,7 @@ export function useBitFeed(): BitFeedModel {
     cueId: null,
     presence: null,
     speech: null,
+    agent: null,
   };
 }
 
@@ -75,6 +79,7 @@ function useSharedBitFeed(): BitFeedModel {
       events: readonly VisualEvent[],
       presence?: BitPresence | null,
       speech?: string | null,
+      agent?: PublicAgent | null,
     ) => {
       const pose = controller.sample(rehearsal ? performance.now() : Date.now());
       const cueId = controller.activeCueId();
@@ -89,6 +94,7 @@ function useSharedBitFeed(): BitFeedModel {
           cueId,
           presence: presence === undefined ? current.presence : presence,
           speech: speech === undefined ? current.speech : speech,
+          agent: agent === undefined ? current.agent : agent,
         };
         return sameFeed(current, next) ? current : next;
       });
@@ -156,14 +162,15 @@ function useSharedBitFeed(): BitFeedModel {
         const source = availableSource(body);
         const presence = readPresence(body);
         const speech = readSpeech(body, presence);
+        const agent = readAgent(body);
         if (!source) {
           controller.fail();
-          publish("unavailable", [], presence, null);
+          publish("unavailable", [], presence, null, agent);
           return;
         }
         controller.ingest(source, baseline);
         baseline = false;
-        publish("live", source.events, presence, speech);
+        publish("live", source.events, presence, speech, agent);
       } catch {
         if (!cancelled) {
           controller.fail();
@@ -216,7 +223,8 @@ function sameFeed(current: BitFeedModel, next: BitFeedModel): boolean {
     current.pose.intensity !== next.pose.intensity ||
     current.cueId !== next.cueId ||
     !samePresence(current.presence, next.presence) ||
-    current.speech !== next.speech
+    current.speech !== next.speech ||
+    agentSignature(current.agent) !== agentSignature(next.agent)
   ) {
     return false;
   }
@@ -270,6 +278,34 @@ function readPresence(value: unknown): BitPresence | null {
   const launchState = row.launchState === "LIVE" || row.launchState === "PRELAUNCH" ? row.launchState : null;
   const mint = typeof row.mint === "string" && row.mint.trim() !== "" ? row.mint : null;
   return { launchState, mint, runtimeKnown: true };
+}
+
+function agentSignature(agent: PublicAgent | null): string {
+  if (!agent) {
+    return "";
+  }
+  return `${agent.known}:${agent.state}:${agent.lifecycle}:${agent.lastEventAt ?? ""}:${agent.recent.buyCount}:${agent.recent.sellCount}:${agent.recent.trend}`;
+}
+
+function readAgent(value: unknown): PublicAgent | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const agent = (value as Record<string, unknown>).agent;
+  if (typeof agent !== "object" || agent === null) {
+    return null;
+  }
+  const row = agent as PublicAgent;
+  if (row.state !== "QUIET" && row.state !== "WATCHING" && row.state !== "ACTIVE" && row.state !== "CHAOTIC") {
+    return null;
+  }
+  if (row.lifecycle !== "IDLE" && row.lifecycle !== "WATCHING" && row.lifecycle !== "THINKING" && row.lifecycle !== "REACTING") {
+    return null;
+  }
+  if (!row.recent || !row.memory || !Array.isArray(row.observations)) {
+    return null;
+  }
+  return row;
 }
 
 function readSpeech(value: unknown, presence: BitPresence | null): string | null {

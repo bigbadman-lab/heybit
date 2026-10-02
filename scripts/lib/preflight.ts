@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkAlchemy, type AlchemyStatus } from "../../apps/worker/src/alchemy.js";
 import { checkOpenAi } from "../../apps/worker/src/openai-reactions.js";
 import { checkLocalEnv, type EnvCheckReport } from "./env-check.js";
+import { ACTIVATION_CONTROL, RECOVERY_CONTROL } from "./launch-control.js";
 import { reportLine, readCanonicalRuntime, type RuntimeReadResult } from "./launch-report.js";
 import { getRepoRoot, loadManifest } from "./manifest.js";
 import { createServiceRoleClient } from "./supabase.js";
@@ -58,6 +59,7 @@ const REQUIRED_PATHS = [
   "supabase/migrations/20260930181600_create_bit_reactions.sql",
   "supabase/migrations/20261002130000_create_bit_rehearsal.sql",
   "supabase/migrations/20261002160000_create_bit_public_speech.sql",
+  "supabase/migrations/20261002190000_create_bit_public_agent.sql",
   "package.json",
 ];
 
@@ -70,6 +72,7 @@ const REQUIRED_SCRIPTS = [
   "launch:status",
   "launch:preflight",
   "launch:activate",
+  "launch:recover-prelaunch",
   "bit:burn",
   "bit:dex-paid",
   "supabase:check",
@@ -182,6 +185,8 @@ export function formatPreflight(report: PreflightReport): string {
     reportLine("Reaction idempotency", report.idempotencyOk ? "PASS" : "FAIL"),
     reportLine("Reaction stress", report.reactionStressOk ? "PASS" : "FAIL"),
     reportLine("Launch state", launchState),
+    reportLine("Activation command", ACTIVATION_CONTROL),
+    reportLine("Recovery command", RECOVERY_CONTROL),
     "",
     reportLine("Final website", "NOT IMPLEMENTED"),
     reportLine("Production worker", "NOT DEPLOYED"),
