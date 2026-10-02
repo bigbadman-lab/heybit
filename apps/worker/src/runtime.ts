@@ -137,6 +137,7 @@ export function formatWorkerStatus(snapshot: {
     `queue dropped: ${causes.queue_dropped}`,
     `rpc pending index: ${causes.rpc_pending_index}`,
     `rpc fetch null terminal: ${causes.rpc_fetch_null_terminal}`,
+    "coverage class: provider miss, not a worker error",
     `rpc rate limited: ${causes.rpc_rate_limited}`,
     `rpc fetch error: ${causes.rpc_fetch_error}`,
     `db insert error: ${causes.db_insert_error}`,

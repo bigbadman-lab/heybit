@@ -66,9 +66,13 @@ test("status facts come from runtime and the shared feed", () => {
   assert.equal(mintLabel(null, false), "UNAVAILABLE");
   assert.equal(mintLabel(null, true), "NOT LAUNCHED");
   assert.equal(mintLabel("MintAddress", true), "MintAddress");
-  assert.equal(feedLabel("live"), "LIVE");
-  assert.equal(feedLabel("unavailable"), "UNAVAILABLE");
-  assert.equal(feedLabel("pending"), "…");
+  assert.equal(feedLabel("live", "LIVE"), "LIVE");
+  assert.equal(feedLabel("pending", "LIVE"), "…");
+  assert.equal(feedLabel("live", "PRELAUNCH"), "IDLE");
+  assert.equal(feedLabel("pending", "PRELAUNCH"), "IDLE");
+  assert.equal(feedLabel("live", null), "IDLE");
+  assert.equal(feedLabel("unavailable", "PRELAUNCH"), "UNAVAILABLE");
+  assert.equal(feedLabel("unavailable", "LIVE"), "UNAVAILABLE");
 
   const page = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
   const status = readFileSync(new URL("../apps/web/components/bit/BitStatus.tsx", import.meta.url), "utf8");

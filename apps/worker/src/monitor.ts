@@ -55,6 +55,7 @@ export function signatureStep(
     if (attempt < 2) {
       return { step: { kind: "retry", reason: "unavailable" }, cause: "rpc_pending_index" };
     }
+    // One recheck already ran. A second null is a provider coverage miss, not a worker fault.
     return { step: { kind: "permanent" }, cause: "rpc_fetch_null_terminal" };
   }
   if (input.fetched === "rate_limited") {

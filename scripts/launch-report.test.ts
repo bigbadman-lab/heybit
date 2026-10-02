@@ -32,6 +32,7 @@ test("launch status formats PRELAUNCH without inventing a mint", () => {
   assert.match(text, /OpenAI \.+ PASS/);
   assert.match(text, /Reaction pipeline \.+ READY/);
   assert.match(text, /Reaction scheduler \.+ IDLE/);
+  assert.match(text, /Null terminal \.+ provider miss, not a worker error/);
   assert.match(text, /Reason \.+ token not live/);
   assert.match(text, /VERDICT: PRELAUNCH/);
   assert.equal(text.includes("BIT IS READY TO LAUNCH"), false);

@@ -368,6 +368,7 @@ test("worker status prints the classified counters", () => {
   assert.match(text, /active processors: 0\/3/);
   assert.match(text, /rpc pending index: 5/);
   assert.match(text, /rpc fetch null terminal: 9/);
+  assert.match(text, /coverage class: provider miss, not a worker error/);
   assert.match(text, /rpc rate limited: 6/);
   assert.match(text, /queue dropped: 4/);
   assert.match(text, /fallback store error: 5/);

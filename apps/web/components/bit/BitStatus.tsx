@@ -23,7 +23,7 @@ export function BitStatus({
     ["RUNTIME", runtimeLabel(shownLaunch)],
     ["MARKET", marketStatus(shownLaunch, shownKnown)],
     ["MINT", mintLabel(shownMint, shownKnown)],
-    ["FEED", feedLabel(feed.status)],
+    ["FEED", feedLabel(feed.status, shownLaunch === "LIVE" ? "LIVE" : shownLaunch === "PRELAUNCH" ? "PRELAUNCH" : null)],
   ] as const;
 
   return (

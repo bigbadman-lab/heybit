@@ -78,14 +78,20 @@ export function mintLabel(mint: string | null, runtimeKnown: boolean): string {
   return mint;
 }
 
-export function feedLabel(status: "pending" | "live" | "unavailable"): string {
-  if (status === "live") {
-    return "LIVE";
-  }
+export function feedLabel(
+  status: "pending" | "live" | "unavailable",
+  launchState: "PRELAUNCH" | "LIVE" | null,
+): string {
   if (status === "unavailable") {
     return "UNAVAILABLE";
   }
-  return "…";
+  if (launchState !== "LIVE") {
+    return "IDLE";
+  }
+  if (status !== "live") {
+    return "…";
+  }
+  return "LIVE";
 }
 
 function poolFor(state: string): readonly string[] {
