@@ -58,22 +58,28 @@ main.home {
 .site-header {
   align-self: stretch;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   position: sticky;
   top: 0;
   z-index: 20;
   margin-bottom: var(--bit-lg);
   background: #070708;
   border-bottom: 1px solid rgba(243, 240, 232, 0.16);
+  box-sizing: border-box;
 }
 
 .site-header-bar {
   width: min(100%, 40rem);
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 0.9rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1.25rem;
+  box-sizing: border-box;
 }
 
 .site-nav {
@@ -565,14 +571,36 @@ main.bit-lab {
   }
 
   .site-header-bar {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand x"
+      "nav nav";
+    align-items: center;
+    justify-content: stretch;
+    padding: 0.75rem 1rem;
+  }
+
+  .site-header .eyebrow {
+    grid-area: brand;
+    justify-self: start;
+  }
+
+  .site-header .bit-x {
+    grid-area: x;
+    justify-self: end;
   }
 
   .site-nav {
-    order: 3;
-    flex-basis: 100%;
+    grid-area: nav;
+    flex: none;
+    width: auto;
+    max-width: 100%;
     justify-content: flex-start;
+  }
+
+  .factory-form input {
+    font-size: 16px;
   }
 
   main.home h1 {
