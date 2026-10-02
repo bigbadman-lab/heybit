@@ -51,6 +51,7 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
       alchemy = await checkAlchemy(env);
     }
     const gate = listenerForRuntime(runtime);
+    reactions.setLive(gate.listener === "ACTIVE");
     if (gate.listener === "ACTIVE" && runtime.status === "ok" && runtime.runtime.canonicalMint && listener) {
       listener.start(runtime.runtime.canonicalMint);
     } else if (listener && mode !== "IDLE") {

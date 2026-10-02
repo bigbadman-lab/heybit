@@ -1,4 +1,5 @@
 import { getBitRuntime, type BitRuntime } from "@heybit/shared";
+import { readRehearsal, resolveEffective } from "@heybit/shared/rehearsal";
 import { PROCESSOR_CONCURRENCY } from "@heybit/shared/ingest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { existsSync } from "node:fs";
@@ -7,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
 
 export type WorkerRuntimeRead =
-  | { status: "ok"; runtime: BitRuntime }
+  | { status: "ok"; runtime: BitRuntime; label?: "REHEARSAL" }
   | { status: "unavailable" };
 
 export async function loadWorkerRuntime(env: NodeJS.ProcessEnv = process.env): Promise<WorkerRuntimeRead> {
@@ -18,7 +19,21 @@ export async function loadWorkerRuntime(env: NodeJS.ProcessEnv = process.env): P
     if (typeof url !== "string" || url.trim() === "" || typeof key !== "string" || key.trim() === "") {
       return { status: "unavailable" };
     }
-    const runtime = await getBitRuntime(createWorkerClient(url, key));
+    const client = createWorkerClient(url, key);
+    const runtime = await getBitRuntime(client);
+    if (runtime.launchState === "LIVE") {
+      return { status: "ok", runtime };
+    }
+    const stored = await readRehearsal(client);
+    const rehearsal = stored.status === "ready" ? stored.record : null;
+    const view = resolveEffective(runtime, rehearsal, Date.now());
+    if (view.mode === "REHEARSAL" && view.mint) {
+      return {
+        status: "ok",
+        label: "REHEARSAL",
+        runtime: { ...runtime, launchState: "LIVE", canonicalMint: view.mint },
+      };
+    }
     return { status: "ok", runtime };
   } catch {
     return { status: "unavailable" };
@@ -49,7 +64,12 @@ export function formatWorkerStatus(snapshot: {
     recentFailures: number;
   };
 }): string {
-  const runtimeState = snapshot.runtime.status === "ok" ? snapshot.runtime.runtime.launchState : "unavailable";
+  const runtimeState =
+    snapshot.runtime.status !== "ok"
+      ? "unavailable"
+      : snapshot.runtime.label === "REHEARSAL"
+        ? "REHEARSAL"
+        : snapshot.runtime.runtime.launchState;
   const mint = snapshot.runtime.status === "ok" ? (snapshot.runtime.runtime.canonicalMint ?? "none") : "none";
   const queue = snapshot.queue ?? { depth: 0, active: 0, processed: 0, duplicates: 0, retries: 0, failures: 0 };
   const processing = snapshot.processing ?? (snapshot.listener === "IDLE" ? "IDLE" : "ACTIVE");

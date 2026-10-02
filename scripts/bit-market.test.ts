@@ -26,11 +26,10 @@ test("homepage market row reuses the runtime snapshot and adds no market infrast
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
   const manifest = readFileSync(new URL("../config/env-manifest.json", import.meta.url), "utf8");
 
-  assert.match(page, /readPublicRuntime/);
-  assert.match(page, /mint=\{runtime \? runtime\.canonicalMint : null\}/);
-  assert.match(page, /launchState=\{runtime \? runtime\.launchState : null\}/);
-  assert.equal(page.includes("canonicalMint"), true);
-  assert.equal((page.match(/canonicalMint/g) ?? []).length, 1);
+  assert.match(page, /readPublicPresence/);
+  assert.match(page, /mint=\{presence\.mint\}/);
+  assert.match(page, /launchState=\{presence\.launchState\}/);
+  assert.equal((page.match(/presence\.mint/g) ?? []).length, 1);
 
   const runtimeIndex = status.indexOf('["RUNTIME"');
   const marketIndex = status.indexOf('["MARKET"');
@@ -38,7 +37,8 @@ test("homepage market row reuses the runtime snapshot and adds no market infrast
   const feedIndex = status.indexOf('["FEED"');
   assert.ok(runtimeIndex < marketIndex && marketIndex < mintIndex && mintIndex < feedIndex);
   assert.equal(status.includes('["STATE"'), false);
-  assert.match(status, /marketStatus\(launchState, runtimeKnown\)/);
+  assert.match(status, /marketStatus\(shownLaunch, shownKnown\)/);
+  assert.match(status, /feed\.presence/);
   assert.equal(status.includes("aria-live"), false);
   assert.equal(status.includes("fetch("), false);
 

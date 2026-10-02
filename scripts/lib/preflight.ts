@@ -56,6 +56,7 @@ const REQUIRED_PATHS = [
   "supabase/migrations/20260930161700_create_bit_runtime.sql",
   "supabase/migrations/20260930163700_create_processed_transactions.sql",
   "supabase/migrations/20260930181600_create_bit_reactions.sql",
+  "supabase/migrations/20261002130000_create_bit_rehearsal.sql",
   "package.json",
 ];
 

@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getBitRuntime, type BitRuntime } from "@heybit/shared";
+import { publicPresence, readRehearsal, type PublicPresence } from "@heybit/shared/rehearsal";
 import { config as loadDotenv } from "dotenv";
 
 let envLoaded = false;
@@ -45,6 +46,19 @@ export async function readPublicRuntime(): Promise<BitRuntime | null> {
     return await getBitRuntime(createPublicServerClient());
   } catch {
     return null;
+  }
+}
+
+/** Server-evaluated token presence. An expired rehearsal is already inactive here. */
+export async function readPublicPresence(nowMs = Date.now()): Promise<PublicPresence> {
+  try {
+    const client = createPublicServerClient();
+    const runtime = await getBitRuntime(client);
+    const stored = await readRehearsal(client);
+    const rehearsal = stored.status === "ready" ? stored.record : null;
+    return publicPresence(runtime, rehearsal, nowMs);
+  } catch {
+    return { launchState: null, mint: null, runtimeKnown: false };
   }
 }
 

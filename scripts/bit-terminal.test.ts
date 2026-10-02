@@ -33,17 +33,17 @@ test("homepage is a terminal and the rejected landing page is gone", () => {
   const feed = readFileSync(new URL("../apps/web/components/bit/use-bit-visual.tsx", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
 
-  assert.match(page, /readPublicRuntime/);
+  assert.match(page, /readPublicPresence/);
   assert.match(page, /<BitProduction \/>/);
   assert.match(page, /<BitSpeech \/>/);
   assert.match(page, /<BitEventTape \/>/);
   assert.match(page, /<BitPrompt \/>/);
-  assert.equal((page.match(/canonicalMint/g) ?? []).length, 1);
+  assert.equal((page.match(/presence\.mint/g) ?? []).length, 1);
   assert.match(speech, /selectPhrase/);
   assert.match(speech, /<h1/);
   assert.match(tape, /tapeRows\(feed\.events\)/);
   assert.match(tape, /no activity\./);
-  assert.match(status, /marketStatus\(launchState, runtimeKnown\)/);
+  assert.match(status, /marketStatus\(shownLaunch, shownKnown\)/);
   assert.match(status, /<BitTokenActions/);
   assert.match(prompt, /aria-hidden="true"/);
   assert.match(css, /--bit-column: 27\.5rem/);

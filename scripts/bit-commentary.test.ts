@@ -77,9 +77,9 @@ test("status facts come from runtime and the shared feed", () => {
   const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
   const labPage = readFileSync(new URL("../apps/web/app/lab/bit/page.tsx", import.meta.url), "utf8");
   const lab = readFileSync(new URL("../apps/web/components/bit/BitLab.tsx", import.meta.url), "utf8");
-  assert.match(page, /readPublicRuntime/);
-  assert.match(page, /launchState=\{runtime \? runtime\.launchState : null\}/);
-  assert.match(page, /mint=\{runtime \? runtime\.canonicalMint : null\}/);
+  assert.match(page, /readPublicPresence/);
+  assert.match(page, /launchState=\{presence\.launchState\}/);
+  assert.match(page, /mint=\{presence\.mint\}/);
   assert.ok(page.indexOf("<BitEventTape />") < page.indexOf("<BitStatus"));
   assert.equal(page.includes("BIT runtime:"), false);
   assert.equal(page.includes("Official mint:"), false);

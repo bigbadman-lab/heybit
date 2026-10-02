@@ -59,11 +59,11 @@ test("homepage actions reuse the canonical mint and add no trading surface", () 
   const manifest = readFileSync(new URL("../config/env-manifest.json", import.meta.url), "utf8");
   const shared = readFileSync(new URL("../packages/shared/src/index.ts", import.meta.url), "utf8");
 
-  assert.match(page, /mint=\{runtime \? runtime\.canonicalMint : null\}/);
-  assert.equal((page.match(/canonicalMint/g) ?? []).length, 1);
-  assert.match(status, /<BitTokenActions launchState=\{launchState\} mint=\{mint\} \/>/);
+  assert.match(page, /mint=\{presence\.mint\}/);
+  assert.equal((page.match(/presence\.mint/g) ?? []).length, 1);
+  assert.match(status, /<BitTokenActions launchState=\{shownLaunch\} mint=\{shownMint\} \/>/);
   assert.ok(status.indexOf('["FEED"') < status.indexOf("<BitTokenActions"));
-  assert.match(status, /marketStatus\(launchState, runtimeKnown\)/);
+  assert.match(status, /marketStatus\(shownLaunch, shownKnown\)/);
   assert.match(view, /navigator\.clipboard\.writeText/);
   assert.match(view, /rel="noopener noreferrer"/);
   assert.match(view, /target="_blank"/);

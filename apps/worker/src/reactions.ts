@@ -6,6 +6,8 @@ import { createSupabaseReactionStore } from "./reaction-store.js";
 
 export interface LiveReactions {
   note(event: BitTradeEvent): void;
+  /** When false, queued reactions are dropped and cannot be stored as live. */
+  setLive(live: boolean): void;
   metrics(): SchedulerMetrics;
 }
 
@@ -16,7 +18,15 @@ export function createLiveReactions(env: NodeJS.ProcessEnv, client: SupabaseClie
     store,
     infer: (facts) => requestBitReaction(readKey(env), facts),
   });
+  scheduler.hold();
   return {
+    setLive(live) {
+      if (live) {
+        scheduler.resume();
+        return;
+      }
+      scheduler.hold();
+    },
     note(event) {
       scheduler.observe([
         {

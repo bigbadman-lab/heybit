@@ -306,6 +306,7 @@ export class ReactionScheduler {
   private circuitOpenUntil = 0;
   private fallbackUsedWhileOpen = false;
   private speaking = false;
+  private suspended = false;
 
   constructor(
     private readonly options: {
@@ -315,7 +316,21 @@ export class ReactionScheduler {
     },
   ) {}
 
+  /** Drop queued rehearsal work so it cannot speak after the window closes. */
+  hold(): void {
+    this.suspended = true;
+    this.normal = null;
+    this.priority.length = 0;
+  }
+
+  resume(): void {
+    this.suspended = false;
+  }
+
   observe(events: TradeFact[]): void {
+    if (this.suspended) {
+      return;
+    }
     for (const summary of aggregateTrades(events, this.options.now())) {
       this.windows += 1;
       if (this.done.has(summary.sourceKey)) {
@@ -333,6 +348,9 @@ export class ReactionScheduler {
   }
 
   pushPriority(eventType: OperatorEventType, eventId: string): void {
+    if (this.suspended) {
+      return;
+    }
     const sourceKey = `priority:${eventType}:${eventId}`;
     if (this.done.has(sourceKey) || this.priority.some((item) => item.sourceKey === sourceKey)) {
       return;
@@ -365,7 +383,7 @@ export class ReactionScheduler {
   }
 
   async next(): Promise<boolean> {
-    if (this.speaking) {
+    if (this.suspended || this.speaking) {
       return false;
     }
     const now = this.options.now();
@@ -410,13 +428,25 @@ export class ReactionScheduler {
         this.done.add(summary.sourceKey);
         return;
       }
+      if (this.suspended) {
+        await this.finishExpired(summary, now);
+        return;
+      }
       let outcome: InferenceResult = { ok: false, transient: true, reason: "unavailable" };
       for (let attempt = 1; attempt <= OPENAI_MAX_ATTEMPTS; attempt += 1) {
+        if (this.suspended) {
+          await this.finishExpired(summary, now);
+          return;
+        }
         this.attempts += 1;
         try {
           outcome = await this.options.infer(reactionFacts(summary));
         } catch {
           outcome = { ok: false, transient: true, reason: "unavailable" };
+        }
+        if (this.suspended) {
+          await this.finishExpired(summary, now);
+          return;
         }
         if (outcome.ok) {
           const validated = validateReactionText(outcome.text);
@@ -457,7 +487,28 @@ export class ReactionScheduler {
     }
   }
 
+  private async finishExpired(summary: ReactionSummary, now: number): Promise<void> {
+    this.expired += 1;
+    this.done.add(summary.sourceKey);
+    try {
+      await this.options.store.finish(summary.sourceKey, {
+        status: "EXPIRED",
+        text: null,
+        model: null,
+        generatedAtMs: now,
+      });
+    } catch {
+      this.failures += 1;
+    }
+  }
+
   private async storeFallback(summary: ReactionSummary, now: number, alreadyClaimed: boolean): Promise<void> {
+    if (this.suspended) {
+      if (alreadyClaimed) {
+        await this.finishExpired(summary, now);
+      }
+      return;
+    }
     if (!alreadyClaimed) {
       try {
         const claim = await this.options.store.claim(draftFrom(summary));

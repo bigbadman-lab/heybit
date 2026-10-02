@@ -14,14 +14,27 @@ const POLL_MS = 2_000;
 
 export type BitFeedStatus = "pending" | "live" | "unavailable";
 
+export interface BitPresence {
+  launchState: "PRELAUNCH" | "LIVE" | null;
+  mint: string | null;
+  runtimeKnown: boolean;
+}
+
 export interface BitFeedModel {
   pose: VisualPose;
   status: BitFeedStatus;
   events: readonly VisualEvent[];
   cueId: string | null;
+  presence: BitPresence | null;
 }
 
-const pendingFeed: BitFeedModel = { pose: idleVisualPose(), status: "pending", events: [], cueId: null };
+const pendingFeed: BitFeedModel = {
+  pose: idleVisualPose(),
+  status: "pending",
+  events: [],
+  cueId: null,
+  presence: null,
+};
 
 const BitFeedContext = createContext<BitFeedModel | null>(null);
 
@@ -36,7 +49,13 @@ export function useBitVisualPose(): VisualPose {
 }
 
 export function useBitFeed(): BitFeedModel {
-  return useContext(BitFeedContext) ?? { pose: idleVisualPose(), status: "unavailable", events: [], cueId: null };
+  return useContext(BitFeedContext) ?? {
+    pose: idleVisualPose(),
+    status: "unavailable",
+    events: [],
+    cueId: null,
+    presence: null,
+  };
 }
 
 function useSharedBitFeed(): BitFeedModel {
@@ -48,15 +67,22 @@ function useSharedBitFeed(): BitFeedModel {
     const controller = createBitVisualController();
     let cancelled = false;
 
-    const publish = (status: BitFeedStatus, events: readonly VisualEvent[]) => {
+    const publish = (status: BitFeedStatus, events: readonly VisualEvent[], presence?: BitPresence | null) => {
       const pose = controller.sample(rehearsal ? performance.now() : Date.now());
       const cueId = controller.activeCueId();
       if (cancelled) {
         return;
       }
-      setModel((current) =>
-        sameFeed(current, { pose, status, events, cueId }) ? current : { pose, status, events, cueId },
-      );
+      setModel((current) => {
+        const next = {
+          pose,
+          status,
+          events,
+          cueId,
+          presence: presence === undefined ? current.presence : presence,
+        };
+        return sameFeed(current, next) ? current : next;
+      });
     };
 
     if (rehearsal) {
@@ -119,14 +145,15 @@ function useSharedBitFeed(): BitFeedModel {
         }
         const body: unknown = await response.json();
         const source = availableSource(body);
+        const presence = readPresence(body);
         if (!source) {
           controller.fail();
-          publish("unavailable", []);
+          publish("unavailable", [], presence);
           return;
         }
         controller.ingest(source, baseline);
         baseline = false;
-        publish("live", source.events);
+        publish("live", source.events, presence);
       } catch {
         if (!cancelled) {
           controller.fail();
@@ -162,12 +189,23 @@ function useSharedBitFeed(): BitFeedModel {
   return model;
 }
 
+function samePresence(current: BitPresence | null, next: BitPresence | null): boolean {
+  if (current === next) {
+    return true;
+  }
+  if (!current || !next) {
+    return false;
+  }
+  return current.launchState === next.launchState && current.mint === next.mint && current.runtimeKnown === next.runtimeKnown;
+}
+
 function sameFeed(current: BitFeedModel, next: BitFeedModel): boolean {
   if (
     current.status !== next.status ||
     current.pose.state !== next.pose.state ||
     current.pose.intensity !== next.pose.intensity ||
-    current.cueId !== next.cueId
+    current.cueId !== next.cueId ||
+    !samePresence(current.presence, next.presence)
   ) {
     return false;
   }
@@ -204,6 +242,23 @@ function readTapeFixture(): "empty" | "preview" | null {
     return name;
   }
   return null;
+}
+
+function readPresence(value: unknown): BitPresence | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const presence = (value as Record<string, unknown>).presence;
+  if (typeof presence !== "object" || presence === null) {
+    return null;
+  }
+  const row = presence as Record<string, unknown>;
+  if (row.runtimeKnown !== true) {
+    return { launchState: null, mint: null, runtimeKnown: false };
+  }
+  const launchState = row.launchState === "LIVE" || row.launchState === "PRELAUNCH" ? row.launchState : null;
+  const mint = typeof row.mint === "string" && row.mint.trim() !== "" ? row.mint : null;
+  return { launchState, mint, runtimeKnown: true };
 }
 
 function availableSource(value: unknown): VisualSource | null {

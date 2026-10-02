@@ -15,10 +15,14 @@ export function BitStatus({
   runtimeKnown: boolean;
 }) {
   const feed = useBitFeed();
+  const current = feed.presence;
+  const shownLaunch = current ? current.launchState : launchState;
+  const shownMint = current ? current.mint : mint;
+  const shownKnown = current ? current.runtimeKnown : runtimeKnown;
   const facts = [
-    ["RUNTIME", runtimeLabel(launchState)],
-    ["MARKET", marketStatus(launchState, runtimeKnown)],
-    ["MINT", mintLabel(mint, runtimeKnown)],
+    ["RUNTIME", runtimeLabel(shownLaunch)],
+    ["MARKET", marketStatus(shownLaunch, shownKnown)],
+    ["MINT", mintLabel(shownMint, shownKnown)],
     ["FEED", feedLabel(feed.status)],
   ] as const;
 
@@ -32,7 +36,7 @@ export function BitStatus({
           </div>
         ))}
       </dl>
-      <BitTokenActions launchState={launchState} mint={mint} />
+      <BitTokenActions launchState={shownLaunch} mint={shownMint} />
     </section>
   );
 }

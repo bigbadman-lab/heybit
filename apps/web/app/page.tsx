@@ -6,7 +6,7 @@ import { BitReactionContext } from "../components/bit/BitReactionContext";
 import { BitSpeech } from "../components/bit/BitSpeech";
 import { BitStatus } from "../components/bit/BitStatus";
 import { BitVisualFeed } from "../components/bit/use-bit-visual";
-import { readPublicRuntime } from "../lib/public-supabase";
+import { readPublicPresence } from "../lib/public-supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const runtime = await readPublicRuntime();
+  const presence = await readPublicPresence();
 
   return (
     <main className="home">
@@ -37,9 +37,9 @@ export default async function HomePage() {
         <BitSpeech />
         <BitEventTape />
         <BitStatus
-          launchState={runtime ? runtime.launchState : null}
-          mint={runtime ? runtime.canonicalMint : null}
-          runtimeKnown={runtime !== null}
+          launchState={presence.launchState}
+          mint={presence.mint}
+          runtimeKnown={presence.runtimeKnown}
         />
         <BitPrompt />
       </BitVisualFeed>
