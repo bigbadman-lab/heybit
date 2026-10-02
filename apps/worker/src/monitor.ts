@@ -16,7 +16,8 @@ export const WORKER_QUEUE_HIGH_WATER = 400;
 export const WORKER_QUEUE_LOW_WATER = 120;
 
 export interface IngestCauseCounts {
-  rpc_fetch_null: number;
+  rpc_pending_index: number;
+  rpc_fetch_null_terminal: number;
   rpc_rate_limited: number;
   rpc_fetch_error: number;
   db_insert_error: number;
@@ -35,12 +36,15 @@ export function classifyRpcFailure(error: unknown): "rate_limited" | "rpc" {
   return "rpc";
 }
 
-export function signatureStep(input: {
-  ready: boolean;
-  live: boolean;
-  fetched: "null" | "rate_limited" | "error" | "transaction";
-  outcome: "trade" | "ignored" | "failed" | "duplicate" | "unavailable" | "retry" | null;
-}): { step: StepResult; cause: keyof IngestCauseCounts | null } {
+export function signatureStep(
+  input: {
+    ready: boolean;
+    live: boolean;
+    fetched: "null" | "rate_limited" | "error" | "transaction";
+    outcome: "trade" | "ignored" | "failed" | "duplicate" | "unavailable" | "retry" | null;
+  },
+  attempt = 1,
+): { step: StepResult; cause: keyof IngestCauseCounts | null } {
   if (!input.ready) {
     return { step: { kind: "retry", reason: "supabase" }, cause: "db_insert_error" };
   }
@@ -48,7 +52,10 @@ export function signatureStep(input: {
     return { step: { kind: "done" }, cause: null };
   }
   if (input.fetched === "null" || input.outcome === "unavailable") {
-    return { step: { kind: "retry", reason: "unavailable" }, cause: "rpc_fetch_null" };
+    if (attempt < 2) {
+      return { step: { kind: "retry", reason: "unavailable" }, cause: "rpc_pending_index" };
+    }
+    return { step: { kind: "permanent" }, cause: "rpc_fetch_null_terminal" };
   }
   if (input.fetched === "rate_limited") {
     return { step: { kind: "retry", reason: "rate_limited" }, cause: "rpc_rate_limited" };
@@ -84,7 +91,8 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
   let listener: MintLogListener | null = null;
 
   const causes: IngestCauseCounts = {
-    rpc_fetch_null: 0,
+    rpc_pending_index: 0,
+    rpc_fetch_null_terminal: 0,
     rpc_rate_limited: 0,
     rpc_fetch_error: 0,
     db_insert_error: 0,
@@ -102,7 +110,7 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
       }
       listener?.resumeIntake();
     },
-    process: (signature) => processSignature(signature, env, ledger, connection, reactions, causes),
+    process: (signature, attempt) => processSignature(signature, env, ledger, connection, reactions, causes, attempt),
   });
 
   listener = config
@@ -132,7 +140,7 @@ export async function startWorker(env: NodeJS.ProcessEnv = process.env): Promise
     const metrics = queue.metrics();
     const reactionMetrics = reactions.metrics();
     const alchemyReady = alchemy.rpc === "PASS" && alchemy.wss === "PASS";
-    const listenerMode = mode === "RECONNECTING" ? "RECONNECTING" : gate.listener;
+    const listenerMode = mode === "RECONNECTING" || mode === "PAUSED_BACKPRESSURE" ? mode : gate.listener;
     const text = formatWorkerStatus({
       runtime,
       alchemyReady,
@@ -187,9 +195,10 @@ async function processSignature(
   connection: ReturnType<typeof createReadOnlyConnection> | null,
   reactions: LiveReactions,
   causes: IngestCauseCounts,
+  attempt = 1,
 ): Promise<StepResult> {
   if (!ledger || !connection) {
-    return counted(causes, signatureStep({ ready: false, live: false, fetched: "transaction", outcome: null }));
+    return counted(causes, signatureStep({ ready: false, live: false, fetched: "transaction", outcome: null }, attempt));
   }
   const runtime = await loadWorkerRuntime(env);
   const gate = listenerForRuntime(runtime);
@@ -206,10 +215,10 @@ async function processSignature(
     });
   } catch (error) {
     const fetched = classifyRpcFailure(error) === "rate_limited" ? "rate_limited" : "error";
-    return counted(causes, signatureStep({ ready: true, live: true, fetched, outcome: null }));
+    return counted(causes, signatureStep({ ready: true, live: true, fetched, outcome: null }, attempt));
   }
   if (!response) {
-    return counted(causes, signatureStep({ ready: true, live: true, fetched: "null", outcome: null }));
+    return counted(causes, signatureStep({ ready: true, live: true, fetched: "null", outcome: null }, attempt));
   }
   const tx = fromConfirmedTransaction(signature, response);
   const outcome = await safelyProcessObservedTransaction({
@@ -218,12 +227,15 @@ async function processSignature(
     observedAt,
     ledger,
   });
-  const decision = signatureStep({
-    ready: true,
-    live: true,
-    fetched: "transaction",
-    outcome,
-  });
+  const decision = signatureStep(
+    {
+      ready: true,
+      live: true,
+      fetched: "transaction",
+      outcome,
+    },
+    attempt,
+  );
   if (decision.step.kind === "done" && outcome === "trade" && tx) {
     const parsed = parseTrade(tx, runtime.runtime.canonicalMint, observedAt);
     if (parsed.kind === "trade") {

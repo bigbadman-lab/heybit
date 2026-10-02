@@ -104,19 +104,19 @@ test("a transaction that is not ready retries a bounded number of times", async 
     delay: async () => undefined,
     process: async (_signature, attempt) => {
       calls.push(attempt);
-      return signatureStep({ ready: true, live: true, fetched: "null", outcome: null }).step;
+      return signatureStep({ ready: true, live: true, fetched: "null", outcome: null }, attempt).step;
     },
   });
   queue.enqueue("lag", "lag");
   await queue.drain();
-  assert.deepEqual(calls, [1, 2, 3]);
-  assert.equal(queue.metrics().retries, 2);
+  assert.deepEqual(calls, [1, 2]);
+  assert.equal(queue.metrics().retries, 1);
   assert.equal(queue.metrics().failures, 1);
   assert.equal(queue.metrics().active, 0);
 });
 
 test("rpc failures use a longer backoff than the rehearsal delay", () => {
-  assert.ok(retryDelayMs(1, "unavailable") >= 2_000);
+  assert.ok(retryDelayMs(1, "unavailable") >= 8_000);
   assert.ok(retryDelayMs(2, "unavailable") > retryDelayMs(1, "unavailable"));
   assert.ok(retryDelayMs(1, "rate_limited") >= 1_000);
   assert.ok(retryDelayMs(3, "rate_limited") > retryDelayMs(1, "rate_limited"));
@@ -144,12 +144,19 @@ test("websocket reconnect waits, and intake pause is not a disconnect", async ()
   }
   const previous = globalThis.WebSocket;
   globalThis.WebSocket = FakeSocket as unknown as typeof WebSocket;
-  const listener = new MintLogListener("wss://example.test/socket", () => undefined, () => undefined);
-  const paused = new MintLogListener("wss://example.test/socket", () => undefined, () => undefined);
+  const modes: string[] = [];
+  const listener = new MintLogListener("wss://example.test/socket", () => undefined, (mode) => {
+    modes.push(mode);
+  });
+  const pauseModes: string[] = [];
+  const paused = new MintLogListener("wss://example.test/socket", () => undefined, (mode) => {
+    pauseModes.push(mode);
+  });
   try {
     listener.start("Mint11111111111111111111111111111111");
     sockets[0]?.dispatchEvent(new Event("open"));
     sockets[0]?.dispatchEvent(new Event("close"));
+    assert.equal(modes.at(-1), "RECONNECTING");
     assert.equal(listener.snapshot().ws_disconnect, 1);
     assert.equal(listener.snapshot().ws_reconnect, 1);
     await new Promise((resolve) => setTimeout(resolve, 40));
@@ -160,6 +167,7 @@ test("websocket reconnect waits, and intake pause is not a disconnect", async ()
     const opened = sockets.length;
     sockets.at(-1)?.dispatchEvent(new Event("open"));
     paused.pauseIntake();
+    assert.equal(pauseModes.at(-1), "PAUSED_BACKPRESSURE");
     assert.equal(paused.snapshot().ws_disconnect, 0);
     paused.resumeIntake();
     assert.equal(paused.snapshot().ws_reconnect, 1);
@@ -340,7 +348,8 @@ test("worker status prints the classified counters", () => {
     reason: "token not live",
     queue: { depth: 0, active: 0, concurrency: 3, processed: 1, duplicates: 0, retries: 2, failures: 1, dropped: 4 },
     causes: {
-      rpc_fetch_null: 5,
+      rpc_pending_index: 5,
+      rpc_fetch_null_terminal: 9,
       rpc_rate_limited: 6,
       rpc_fetch_error: 7,
       db_insert_error: 8,
@@ -357,7 +366,8 @@ test("worker status prints the classified counters", () => {
     },
   });
   assert.match(text, /active processors: 0\/3/);
-  assert.match(text, /rpc fetch null: 5/);
+  assert.match(text, /rpc pending index: 5/);
+  assert.match(text, /rpc fetch null terminal: 9/);
   assert.match(text, /rpc rate limited: 6/);
   assert.match(text, /queue dropped: 4/);
   assert.match(text, /fallback store error: 5/);

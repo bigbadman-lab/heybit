@@ -26,6 +26,7 @@ export interface BitFeedModel {
   events: readonly VisualEvent[];
   cueId: string | null;
   presence: BitPresence | null;
+  speech: string | null;
 }
 
 const pendingFeed: BitFeedModel = {
@@ -34,6 +35,7 @@ const pendingFeed: BitFeedModel = {
   events: [],
   cueId: null,
   presence: null,
+  speech: null,
 };
 
 const BitFeedContext = createContext<BitFeedModel | null>(null);
@@ -55,6 +57,7 @@ export function useBitFeed(): BitFeedModel {
     events: [],
     cueId: null,
     presence: null,
+    speech: null,
   };
 }
 
@@ -67,7 +70,12 @@ function useSharedBitFeed(): BitFeedModel {
     const controller = createBitVisualController();
     let cancelled = false;
 
-    const publish = (status: BitFeedStatus, events: readonly VisualEvent[], presence?: BitPresence | null) => {
+    const publish = (
+      status: BitFeedStatus,
+      events: readonly VisualEvent[],
+      presence?: BitPresence | null,
+      speech?: string | null,
+    ) => {
       const pose = controller.sample(rehearsal ? performance.now() : Date.now());
       const cueId = controller.activeCueId();
       if (cancelled) {
@@ -80,6 +88,7 @@ function useSharedBitFeed(): BitFeedModel {
           events,
           cueId,
           presence: presence === undefined ? current.presence : presence,
+          speech: speech === undefined ? current.speech : speech,
         };
         return sameFeed(current, next) ? current : next;
       });
@@ -146,14 +155,15 @@ function useSharedBitFeed(): BitFeedModel {
         const body: unknown = await response.json();
         const source = availableSource(body);
         const presence = readPresence(body);
+        const speech = readSpeech(body, presence);
         if (!source) {
           controller.fail();
-          publish("unavailable", [], presence);
+          publish("unavailable", [], presence, null);
           return;
         }
         controller.ingest(source, baseline);
         baseline = false;
-        publish("live", source.events, presence);
+        publish("live", source.events, presence, speech);
       } catch {
         if (!cancelled) {
           controller.fail();
@@ -205,7 +215,8 @@ function sameFeed(current: BitFeedModel, next: BitFeedModel): boolean {
     current.pose.state !== next.pose.state ||
     current.pose.intensity !== next.pose.intensity ||
     current.cueId !== next.cueId ||
-    !samePresence(current.presence, next.presence)
+    !samePresence(current.presence, next.presence) ||
+    current.speech !== next.speech
   ) {
     return false;
   }
@@ -259,6 +270,17 @@ function readPresence(value: unknown): BitPresence | null {
   const launchState = row.launchState === "LIVE" || row.launchState === "PRELAUNCH" ? row.launchState : null;
   const mint = typeof row.mint === "string" && row.mint.trim() !== "" ? row.mint : null;
   return { launchState, mint, runtimeKnown: true };
+}
+
+function readSpeech(value: unknown, presence: BitPresence | null): string | null {
+  if (presence?.launchState !== "LIVE") {
+    return null;
+  }
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const speech = (value as Record<string, unknown>).speech;
+  return typeof speech === "string" && speech.trim() !== "" ? speech.trim() : null;
 }
 
 function availableSource(value: unknown): VisualSource | null {

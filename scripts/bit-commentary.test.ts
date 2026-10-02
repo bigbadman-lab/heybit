@@ -85,7 +85,7 @@ test("status facts come from runtime and the shared feed", () => {
   assert.equal(page.includes("Official mint:"), false);
   assert.match(status, /useBitFeed/);
   assert.match(speech, /feed\.pose\.state/);
-  assert.match(speech, /selectPhrase/);
+  assert.match(speech, /spokenLine/);
   assert.equal(status.includes("fetch("), false);
   assert.equal(status.includes("openai"), false);
   assert.equal(status.includes('aria-live="assertive"'), false);

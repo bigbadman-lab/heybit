@@ -9,7 +9,7 @@ export type RetryReason = "rpc" | "unavailable" | "supabase" | "rate_limited";
 export type StepResult = { kind: "done" } | { kind: "retry"; reason: RetryReason } | { kind: "permanent" };
 
 const RETRY_DELAYS_MS: Record<RetryReason, readonly number[]> = {
-  unavailable: [2_000, 6_000, 12_000],
+  unavailable: [8_000, 20_000, 20_000],
   rate_limited: [1_000, 4_000, 12_000],
   rpc: [500, 2_000, 6_000],
   supabase: [400, 1_200, 4_000],

@@ -43,7 +43,7 @@ export async function loadWorkerRuntime(env: NodeJS.ProcessEnv = process.env): P
 export function formatWorkerStatus(snapshot: {
   runtime: WorkerRuntimeRead;
   alchemyReady: boolean;
-  listener: "IDLE" | "ACTIVE" | "RECONNECTING";
+  listener: "IDLE" | "ACTIVE" | "PAUSED_BACKPRESSURE" | "RECONNECTING";
   reason: string;
   queue?: {
     depth: number;
@@ -56,7 +56,8 @@ export function formatWorkerStatus(snapshot: {
     dropped?: number;
   };
   causes?: {
-    rpc_fetch_null: number;
+    rpc_pending_index: number;
+    rpc_fetch_null_terminal: number;
     rpc_rate_limited: number;
     rpc_fetch_error: number;
     db_insert_error: number;
@@ -91,7 +92,8 @@ export function formatWorkerStatus(snapshot: {
   const mint = snapshot.runtime.status === "ok" ? (snapshot.runtime.runtime.canonicalMint ?? "none") : "none";
   const queue = snapshot.queue ?? { depth: 0, active: 0, processed: 0, duplicates: 0, retries: 0, failures: 0 };
   const causes = snapshot.causes ?? {
-    rpc_fetch_null: 0,
+    rpc_pending_index: 0,
+    rpc_fetch_null_terminal: 0,
     rpc_rate_limited: 0,
     rpc_fetch_error: 0,
     db_insert_error: 0,
@@ -133,7 +135,8 @@ export function formatWorkerStatus(snapshot: {
     `retries: ${queue.retries}`,
     `failures: ${queue.failures}`,
     `queue dropped: ${causes.queue_dropped}`,
-    `rpc fetch null: ${causes.rpc_fetch_null}`,
+    `rpc pending index: ${causes.rpc_pending_index}`,
+    `rpc fetch null terminal: ${causes.rpc_fetch_null_terminal}`,
     `rpc rate limited: ${causes.rpc_rate_limited}`,
     `rpc fetch error: ${causes.rpc_fetch_error}`,
     `db insert error: ${causes.db_insert_error}`,

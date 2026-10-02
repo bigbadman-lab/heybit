@@ -1,6 +1,6 @@
 import { reconnectDelayMs } from "@heybit/shared/trade";
 
-export type ListenerMode = "IDLE" | "ACTIVE" | "RECONNECTING";
+export type ListenerMode = "IDLE" | "ACTIVE" | "PAUSED_BACKPRESSURE" | "RECONNECTING";
 
 /**
  * Websocket logs mentioning the mint are only a trigger.
@@ -50,7 +50,7 @@ export class MintLogListener {
     }
     this.intakePaused = true;
     this.stopSocket();
-    this.onMode("RECONNECTING");
+    this.onMode("PAUSED_BACKPRESSURE");
   }
 
   resumeIntake(): void {

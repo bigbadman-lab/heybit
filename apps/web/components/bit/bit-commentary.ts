@@ -39,6 +39,20 @@ export function commentarySeed(state: string, cueId: string | null, idleTick: nu
   return state;
 }
 
+/** A stored reaction is spoken only while the public presence is live. */
+export function spokenLine(input: {
+  launchState: "PRELAUNCH" | "LIVE" | null;
+  reactionText: string | null;
+  state: string;
+  seed: string;
+}): { text: string; source: "reaction" | "pool" } {
+  const reaction = input.reactionText?.trim() ?? "";
+  if (input.launchState === "LIVE" && reaction !== "") {
+    return { text: reaction, source: "reaction" };
+  }
+  return { text: selectPhrase(input.state, input.seed), source: "pool" };
+}
+
 export function selectPhrase(state: string, seed: string): string {
   const pool = poolFor(state);
   if (pool.length === 0) {

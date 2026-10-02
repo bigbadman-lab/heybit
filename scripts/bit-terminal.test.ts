@@ -39,7 +39,7 @@ test("homepage is a terminal and the rejected landing page is gone", () => {
   assert.match(page, /<BitEventTape \/>/);
   assert.match(page, /<BitPrompt \/>/);
   assert.equal((page.match(/presence\.mint/g) ?? []).length, 1);
-  assert.match(speech, /selectPhrase/);
+  assert.match(speech, /spokenLine/);
   assert.match(speech, /<h1/);
   assert.match(tape, /tapeRows\(feed\.events\)/);
   assert.match(tape, /no activity\./);
