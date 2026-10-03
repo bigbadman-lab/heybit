@@ -1,20 +1,23 @@
-import { networkJson, profileInput, readJson, requireUserClient, rpcFailure } from "../../../../lib/network";
+import { bindHumanWallet } from "../../../../lib/human-wallet-store";
+import { networkJson, profileInput, readJson, requireHumanActor, rpcFailure } from "../../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
-  const auth = await requireUserClient();
+  const body = await readJson(request);
+  const auth = await requireHumanActor(body, "session");
   if ("response" in auth) {
     return auth.response;
   }
-  const input = profileInput(await readJson(request), "HUMAN");
+  const input = profileInput(body, "HUMAN");
   if (!input.ok) {
     return input.response;
   }
-  const result = await auth.client.rpc("complete_human_profile", {
-    p_username: input.username,
-    p_display_name: input.displayName,
-    p_bio: input.bio,
+  const result = await bindHumanWallet({
+    wallet: auth.wallet,
+    username: input.username,
+    displayName: input.displayName,
+    bio: input.bio,
   });
   if (result.error) {
     return rpcFailure(result.error);

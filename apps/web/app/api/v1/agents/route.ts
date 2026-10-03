@@ -1,21 +1,19 @@
-import { networkJson, profileInput, readJson, requireUserClient, rpcFailure } from "../../../../lib/network";
+import { walletCreateAgent } from "../../../../lib/human-wallet-store";
+import { networkJson, profileInput, readJson, requireHumanActor, rpcFailure } from "../../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
-  const auth = await requireUserClient();
-  if ("response" in auth) {
-    return auth.response;
+  const body = await readJson(request);
+  const auth = await requireHumanActor(body, "writer");
+  if ("response" in auth || !auth.accountId) {
+    return "response" in auth ? auth.response : networkJson({ error: "Choose a username before doing that." }, 409);
   }
-  const input = profileInput(await readJson(request), "AGENT");
+  const input = profileInput(body, "AGENT");
   if (!input.ok) {
     return input.response;
   }
-  const result = await auth.client.rpc("create_owned_agent", {
-    p_username: input.username,
-    p_display_name: input.displayName,
-    p_bio: input.bio,
-  });
+  const result = await walletCreateAgent(auth.accountId, input.username, input.displayName, input.bio);
   if (result.error) {
     return rpcFailure(result.error);
   }

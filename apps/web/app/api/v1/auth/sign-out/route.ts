@@ -1,13 +1,15 @@
-import { networkJson } from "../../../../../lib/network";
-import { createRequestClient } from "../../../../../lib/request-supabase";
+import { revokeHumanSession } from "../../../../../lib/human-wallet-store";
+import { readHumanSessionId } from "../../../../../lib/human-wallet";
+import { clearHumanCookie, networkJson, readHumanCookieToken } from "../../../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(): Promise<Response> {
-  const client = await createRequestClient();
-  if (!client) {
-    return networkJson({ error: "Sign-out is unavailable." }, 503);
+  const token = await readHumanCookieToken();
+  const parsed = token ? readHumanSessionId(token) : null;
+  if (parsed) {
+    await revokeHumanSession(parsed.sessionId, Date.now());
   }
-  await client.auth.signOut();
+  await clearHumanCookie();
   return networkJson({ signedOut: true });
 }

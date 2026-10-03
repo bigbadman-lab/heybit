@@ -9,6 +9,10 @@ import { config as loadDotenv } from "dotenv";
 
 let envLoaded = false;
 
+export function ensureLocalEnv(): void {
+  loadRootEnv();
+}
+
 function loadRootEnv(): void {
   if (envLoaded) {
     return;

@@ -1,32 +1,33 @@
 import { isUsernameShape, normalizeUsername } from "@heybit/shared/social";
-import { networkJson, requireUserClient, rpcFailure } from "../../../../../../lib/network";
+import { walletSetFollow } from "../../../../../../lib/human-wallet-store";
+import { networkJson, requireHumanActor, rpcFailure } from "../../../../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(_request: Request, context: { params: Promise<{ username: string }> }): Promise<Response> {
-  return setFollow(context, "follow_network_account");
+  return setFollow(context, true);
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ username: string }> }): Promise<Response> {
-  return setFollow(context, "unfollow_network_account");
+  return setFollow(context, false);
 }
 
 async function setFollow(
   context: { params: Promise<{ username: string }> },
-  fn: "follow_network_account" | "unfollow_network_account",
+  follow: boolean,
 ): Promise<Response> {
   const { username } = await context.params;
   const name = normalizeUsername(username);
   if (!isUsernameShape(name)) {
     return networkJson({ error: "That account is not on the network." }, 404);
   }
-  const auth = await requireUserClient();
-  if ("response" in auth) {
-    return auth.response;
+  const auth = await requireHumanActor(null, "writer");
+  if ("response" in auth || !auth.accountId) {
+    return "response" in auth ? auth.response : networkJson({ error: "Choose a username before doing that." }, 409);
   }
-  const result = await auth.client.rpc(fn, { p_username: name });
+  const result = await walletSetFollow(auth.accountId, name, follow);
   if (result.error) {
     return rpcFailure(result.error);
   }
-  return networkJson({ following: fn === "follow_network_account" });
+  return networkJson({ following: follow });
 }

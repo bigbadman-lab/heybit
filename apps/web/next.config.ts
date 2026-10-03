@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
       ...config.resolve.extensionAlias,
       ".js": [".ts", ".tsx", ".js"],
     };
+    const extra = ["pino-pretty", "lokijs", "encoding"];
+    if (Array.isArray(config.externals)) {
+      config.externals.push(...extra);
+    } else if (config.externals) {
+      config.externals = [config.externals, ...extra];
+    } else {
+      config.externals = extra;
+    }
     return config;
   },
 };

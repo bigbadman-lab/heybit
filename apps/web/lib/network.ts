@@ -13,9 +13,16 @@ import {
   type FeedFilter,
   type AgentRuntimeStatus,
 } from "@heybit/shared/social";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { tryCreatePublicServerClient } from "./public-supabase";
-import { createRequestClient, hasAuthCookie } from "./request-supabase";
+import { HUMAN_COOKIE, HUMAN_SESSION_MS, clientActorFields, gateHumanSession } from "./human-wallet";
+import {
+  findHumanByWallet,
+  likedIdsForAccount,
+  readOpenHumanSession,
+  viewerFollowsAccount,
+} from "./human-wallet-store";
+import { serverAdminClient } from "./server-admin";
 
 export const FEED_PAGE_SIZE = 20;
 
@@ -85,6 +92,7 @@ const RPC_ERRORS: Record<string, { status: number; error: string }> = {
   missing_account: { status: 404, error: "That account is not on the network." },
   missing_post: { status: 404, error: "That post is not on the network." },
   agent_limit: { status: 400, error: "You can own up to five agents from the web." },
+  invalid_wallet: { status: 400, error: "Wallet is invalid." },
 };
 
 export async function readJson(request: Request): Promise<unknown> {
@@ -128,31 +136,51 @@ export function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+export function humanCookieOptions(maxAge: number) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge,
+  };
+}
+
+export async function readHumanCookieToken(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(HUMAN_COOKIE)?.value ?? null;
+}
+
+export async function writeHumanCookie(token: string): Promise<void> {
+  const jar = await cookies();
+  jar.set(HUMAN_COOKIE, token, humanCookieOptions(HUMAN_SESSION_MS / 1000));
+}
+
+export async function clearHumanCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.set(HUMAN_COOKIE, "", humanCookieOptions(0));
+}
+
 export async function readSessionState(): Promise<SessionState> {
   try {
-    if (!(await hasAuthCookie())) {
+    const token = await readHumanCookieToken();
+    if (!token) {
       return { status: "anonymous" };
     }
-    const client = await createRequestClient();
-    if (!client) {
-      return { status: "anonymous" };
-    }
-    const user = await client.auth.getUser();
-    if (user.error || !user.data.user) {
-      return { status: "anonymous" };
-    }
-    const account = await client.rpc("current_network_account");
-    if (account.error) {
+    if (!serverAdminClient()) {
       return { status: "unavailable" };
     }
-    const row = firstRow(account.data);
-    if (!row) {
+    const session = await readOpenHumanSession(token, Date.now());
+    if (!session) {
+      return { status: "anonymous" };
+    }
+    const account = await findHumanByWallet(session.wallet);
+    if (!account) {
       return { status: "needs-profile" };
     }
-    const viewer = viewerFromRow(row);
-    return viewer ? { status: "ready", account: viewer } : { status: "unavailable" };
+    return { status: "ready", account };
   } catch {
-    return { status: "anonymous" };
+    return { status: "unavailable" };
   }
 }
 
@@ -220,13 +248,11 @@ export async function readProfile(username: string): Promise<
   if (!profile) {
     return { status: "unavailable" };
   }
-  if (await hasAuthCookie()) {
-    const session = await createRequestClient();
-    if (session) {
-      const follows = await session.rpc("viewer_follows", { p_username: name });
-      if (!follows.error && follows.data === true) {
-        profile.viewerFollows = true;
-      }
+  const session = await readOpenHumanSession(await readHumanCookieToken(), Date.now());
+  if (session) {
+    const viewer = await findHumanByWallet(session.wallet);
+    if (viewer) {
+      profile.viewerFollows = await viewerFollowsAccount(viewer.id, name);
     }
   }
   return { status: "ready", profile };
@@ -279,18 +305,34 @@ export async function readReplies(postId: string): Promise<{ status: "ready"; it
   return { status: "ready", items };
 }
 
-export async function requireUserClient(): Promise<
-  { client: SupabaseClient } | { response: Response }
-> {
-  const client = await createRequestClient();
-  if (!client) {
+export async function requireHumanActor(
+  body: unknown,
+  mode: "session" | "writer",
+): Promise<{ wallet: string; accountId: string | null } | { response: Response }> {
+  if (!serverAdminClient()) {
     return { response: networkJson({ error: "The network is unavailable." }, 503) };
   }
-  const user = await client.auth.getUser();
-  if (user.error || !user.data.user) {
-    return { response: networkJson({ error: "Sign in to do that." }, 401) };
+  const session = await readOpenHumanSession(await readHumanCookieToken(), Date.now());
+  const account = session ? await findHumanByWallet(session.wallet) : null;
+  const fields = clientActorFields(body);
+  const gate = gateHumanSession({
+    sessionWallet: session?.wallet ?? null,
+    account: account
+      ? { id: account.id, username: account.username, accountType: account.accountType }
+      : null,
+    clientAccountId: fields.clientAccountId,
+    clientWallet: fields.clientWallet,
+    clientOwnerId: fields.clientOwnerId,
+  });
+  if (!gate.ok) {
+    const status = gate.reason === "spoof" ? 403 : 401;
+    const error = gate.reason === "spoof" ? "That action is not allowed." : "Sign in to do that.";
+    return { response: networkJson({ error }, status) };
   }
-  return { client };
+  if (mode === "writer" && !gate.accountId) {
+    return { response: networkJson({ error: "Choose a username before doing that." }, 409) };
+  }
+  return { wallet: gate.wallet, accountId: gate.accountId };
 }
 
 export function profileInput(
@@ -347,29 +389,18 @@ async function withLikes(items: SocialPost[]): Promise<SocialPost[]> {
     return items;
   }
   try {
-    if (!(await hasAuthCookie())) {
+    const session = await readOpenHumanSession(await readHumanCookieToken(), Date.now());
+    if (!session) {
       return items;
     }
-    const client = await createRequestClient();
-    if (!client) {
+    const account = await findHumanByWallet(session.wallet);
+    if (!account) {
       return items;
     }
-    const user = await client.auth.getUser();
-    if (user.error || !user.data.user) {
+    const ids = await likedIdsForAccount(account.id, items.map((item) => item.id));
+    if (!ids) {
       return items;
     }
-    const liked = await client.rpc("liked_post_ids", { p_ids: items.map((item) => item.id) });
-    if (liked.error || !Array.isArray(liked.data)) {
-      return items;
-    }
-    const ids = new Set(
-      liked.data
-        .map((row) => {
-          const record = asRecord(row);
-          return record && typeof record.post_id === "string" ? record.post_id : null;
-        })
-        .filter((id): id is string => id !== null),
-    );
     return items.map((item) => ({ ...item, liked: ids.has(item.id) }));
   } catch {
     return items;
@@ -422,30 +453,6 @@ function profileFromRow(value: unknown): SocialProfile | null {
     followingCount: asCount(record.following_count),
     viewerFollows: false,
   };
-}
-
-function viewerFromRow(value: unknown): Viewer | null {
-  const record = asRecord(value);
-  if (!record || typeof record.id !== "string" || typeof record.username !== "string") {
-    return null;
-  }
-  const accountType = record.account_type === "AGENT" ? "AGENT" : record.account_type === "HUMAN" ? "HUMAN" : null;
-  if (!accountType || typeof record.display_name !== "string") {
-    return null;
-  }
-  return {
-    id: record.id,
-    username: record.username,
-    displayName: record.display_name,
-    accountType,
-  };
-}
-
-function firstRow(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-  return value;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

@@ -162,7 +162,7 @@ test("the bridge reuses stored reaction text and cannot break the reaction write
   assert.equal(bridge.includes("OPENAI"), false);
   assert.equal(bridge.includes("callback"), false);
   assert.equal(postsRoute.includes("authorAccountId"), false);
-  assert.match(postsRoute, /create_network_post/);
+  assert.match(postsRoute, /walletCreatePost/);
 });
 
 test("homepage keeps BIT and the agent preview does not claim the CLI exists", () => {
@@ -209,5 +209,5 @@ test("the network page is the feed and filters stay on the query", () => {
   assert.match(bitProfile, /name === "bit"/);
   assert.match(bitProfile, /<BitProduction \/>/);
   assert.match(bitProfile, /<BitAsk \/>/);
-  assert.match(postsRoute, /create_network_post/);
+  assert.match(postsRoute, /walletCreatePost/);
 });

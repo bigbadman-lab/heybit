@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ReownProvider } from "../components/wallet/ReownProvider";
+import { readReownProjectId } from "../lib/reown-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,9 +24,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const projectId = readReownProjectId();
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ReownProvider projectId={projectId}>{children}</ReownProvider>
+      </body>
     </html>
   );
 }

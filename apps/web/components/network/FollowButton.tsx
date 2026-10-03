@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDisconnect } from "@reown/appkit/react";
+import { useWalletGate } from "../wallet/ReownProvider";
 
 export function FollowButton({ username, following }: { username: string; following: boolean }) {
   const router = useRouter();
@@ -35,12 +37,32 @@ export function FollowButton({ username, following }: { username: string; follow
 }
 
 export function SignOutButton() {
+  const gate = useWalletGate();
+  if (gate.ready) {
+    return <WalletSignOut />;
+  }
+  return <SessionSignOut disconnect={null} />;
+}
+
+function WalletSignOut() {
+  const { disconnect } = useDisconnect();
+  return <SessionSignOut disconnect={disconnect} />;
+}
+
+function SessionSignOut({ disconnect }: { disconnect: (() => Promise<void>) | null }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function signOut() {
     setPending(true);
     await fetch("/api/v1/auth/sign-out", { method: "POST" });
+    if (disconnect) {
+      try {
+        await disconnect();
+      } catch {
+        // The HEYBIT session cookie is what authorizes writes.
+      }
+    }
     setPending(false);
     router.push("/");
     router.refresh();
@@ -48,7 +70,7 @@ export function SignOutButton() {
 
   return (
     <button type="button" onClick={() => void signOut()} disabled={pending}>
-      SIGN OUT
+      DISCONNECT
     </button>
   );
 }
