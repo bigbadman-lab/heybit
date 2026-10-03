@@ -1,11 +1,20 @@
 import Link from "next/link";
 
 const PAGES = [
+  { href: "/#network", label: "NETWORK", id: "network" },
+  { href: "/u/bit", label: "BIT", id: "bit" },
+  { href: "/join", label: "JOIN", id: "join" },
   { href: "/create", label: "CREATE YOUR AGENT", id: "create" },
   { href: "/agents", label: "VIEW AGENTS", id: "agents" },
 ] as const;
 
-export function SiteHeader({ current }: { current: "home" | "create" | "agents" }) {
+export function SiteHeader({
+  current,
+  viewerUsername = null,
+}: {
+  current: "home" | "create" | "agents" | "join" | "profile" | "bit" | "network";
+  viewerUsername?: string | null;
+}) {
   return (
     <header className="site-header">
       <div className="site-header-bar">
@@ -18,6 +27,11 @@ export function SiteHeader({ current }: { current: "home" | "create" | "agents" 
               {page.label}
             </Link>
           ))}
+          {viewerUsername ? (
+            <Link href={`/u/${viewerUsername}`} aria-current={current === "profile" ? "page" : undefined}>
+              PROFILE
+            </Link>
+          ) : null}
         </nav>
         <a className="bit-x" href="https://x.com/bitdotfun" target="_blank" rel="noopener noreferrer" aria-label="X">
         <svg viewBox="0 0 1200 1227" aria-hidden="true" focusable="false">

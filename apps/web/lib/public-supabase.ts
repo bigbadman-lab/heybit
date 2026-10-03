@@ -29,14 +29,32 @@ function loadRootEnv(): void {
   }
 }
 
-export function createPublicServerClient(): SupabaseClient {
+export function readPublicSupabaseConfig(): { url: string; anonKey: string } | null {
   loadRootEnv();
   const url = firstPresent("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL");
   const anonKey = firstPresent("NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY");
   if (!url || !anonKey) {
+    return null;
+  }
+  return { url, anonKey };
+}
+
+export function createPublicServerClient(): SupabaseClient {
+  const config = readPublicSupabaseConfig();
+  if (!config) {
     throw new Error("Public Supabase configuration is missing.");
   }
-  return createClient(url, anonKey, {
+  return createClient(config.url, config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+export function tryCreatePublicServerClient(): SupabaseClient | null {
+  const config = readPublicSupabaseConfig();
+  if (!config) {
+    return null;
+  }
+  return createClient(config.url, config.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

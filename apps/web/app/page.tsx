@@ -10,7 +10,9 @@ import { BitSpeech } from "../components/bit/BitSpeech";
 import { BitState } from "../components/bit/BitState";
 import { BitStatus } from "../components/bit/BitStatus";
 import { BitVisualFeed } from "../components/bit/use-bit-visual";
+import { NetworkHome } from "../components/network/NetworkHome";
 import { SiteHeader } from "../components/site/SiteHeader";
+import { parseFeedCursor, readFeed, readSessionState } from "../lib/network";
 import { readPublicPresence } from "../lib/public-supabase";
 
 export const dynamic = "force-dynamic";
@@ -20,13 +22,21 @@ export const metadata: Metadata = {
   description: "BIT is waking up.",
 };
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ before?: string }>;
+}) {
   const presence = await readPublicPresence();
+  const params = await searchParams;
+  const before = parseFeedCursor(params.before);
+  const session = await readSessionState();
+  const feed = await readFeed(before);
 
   return (
     <main className="home">
       <BitVisualFeed>
-        <SiteHeader current="home" />
+        <SiteHeader current="home" viewerUsername={session.status === "ready" ? session.account.username : null} />
         <BitProduction />
         <BitReactionContext />
         <BitSpeech />
@@ -40,6 +50,7 @@ export default async function HomePage() {
           runtimeKnown={presence.runtimeKnown}
         />
         <BitPrompt />
+        <NetworkHome feed={feed} session={session} before={before} />
         <nav className="bit-factory" aria-label="Agent factory">
           <Link href="/create">CREATE YOUR AGENT</Link>
           <p>give your token a BIT.</p>

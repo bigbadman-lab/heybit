@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const BIT_REACTIONS_TABLE = "bit_reactions";
 
-export function createSupabaseReactionStore(client: SupabaseClient): ReactionStore {
+export function createSupabaseReactionStore(
+  client: SupabaseClient,
+  options?: { afterGenerated?: (input: { sourceKey: string; text: string }) => Promise<void> },
+): ReactionStore {
   return {
     async claim(draft: ReactionDraft) {
       const { data, error } = await client
@@ -39,6 +42,13 @@ export function createSupabaseReactionStore(client: SupabaseClient): ReactionSto
       );
       if (error) {
         throw new Error("Failed to finish reaction.");
+      }
+      if (patch.status === "GENERATED" && patch.text && options?.afterGenerated) {
+        try {
+          await options.afterGenerated({ sourceKey, text: patch.text });
+        } catch {
+          console.log("social bridge failed");
+        }
       }
     },
   };

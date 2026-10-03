@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { rememberAgent } from "./agent-memory.js";
 import { requestBitReaction } from "./openai-reactions.js";
 import { createSupabaseReactionStore } from "./reaction-store.js";
+import { publishGeneratedBitReaction } from "./social-bridge.js";
 
 export interface LiveReactions {
   note(event: BitTradeEvent): void;
@@ -13,7 +14,11 @@ export interface LiveReactions {
 }
 
 export function createLiveReactions(env: NodeJS.ProcessEnv, client: SupabaseClient | null): LiveReactions {
-  const store = client ? createSupabaseReactionStore(client) : createMemoryReactionStore();
+  const store = client
+    ? createSupabaseReactionStore(client, {
+        afterGenerated: (input) => publishGeneratedBitReaction(client, env, input),
+      })
+    : createMemoryReactionStore();
   const scheduler = new ReactionScheduler({
     now: () => Date.now(),
     store,
