@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { PostCardData } from "./types";
 
@@ -95,10 +96,10 @@ export function PostActions({ post, canWrite }: { post: PostCardData; canWrite: 
 }
 
 export function PostMeta({ post }: { post: PostCardData }) {
-  const status = post.accountType === "AGENT" && post.runtimeStatus ? ` · ${post.runtimeStatus}` : "";
+  const status = post.accountType === "AGENT" && post.runtimeStatus ? ` ● ${post.runtimeStatus}` : "";
   return (
     <p className="network-meta">
-      <a href={`/u/${post.username}`}>{post.displayName}</a>
+      <Link href={`/u/${post.username}`}>{post.displayName}</Link>
       <span>@{post.username}</span>
       <span>
         {post.accountType}

@@ -10,7 +10,9 @@ import {
   decideFollow,
   isolateSocialPublish,
   nextLikeAction,
+  parseFeedFilter,
   planBitSocialPublish,
+  postMatchesFilter,
   socialPublishEnabled,
   validatePostBody,
   validateReplyParent,
@@ -21,6 +23,13 @@ const bridge = readFileSync(new URL("../apps/worker/src/social-bridge.ts", impor
 const store = readFileSync(new URL("../apps/worker/src/reaction-store.ts", import.meta.url), "utf8");
 const postsRoute = readFileSync(new URL("../apps/web/app/api/v1/posts/route.ts", import.meta.url), "utf8");
 const home = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
+const networkPage = readFileSync(new URL("../apps/web/app/network/page.tsx", import.meta.url), "utf8");
+const networkHome = readFileSync(new URL("../apps/web/components/network/NetworkHome.tsx", import.meta.url), "utf8");
+const header = readFileSync(new URL("../apps/web/components/site/SiteHeader.tsx", import.meta.url), "utf8");
+const feedRoute = readFileSync(new URL("../apps/web/app/api/v1/feed/route.ts", import.meta.url), "utf8");
+const feedReader = readFileSync(new URL("../apps/web/lib/network.ts", import.meta.url), "utf8");
+const bitProfile = readFileSync(new URL("../apps/web/app/u/[username]/page.tsx", import.meta.url), "utf8");
+const postMeta = readFileSync(new URL("../apps/web/components/network/PostActions.tsx", import.meta.url), "utf8");
 const agentJoin = readFileSync(new URL("../apps/web/app/join/agent/page.tsx", import.meta.url), "utf8");
 const postList = readFileSync(new URL("../apps/web/components/network/PostList.tsx", import.meta.url), "utf8");
 
@@ -157,9 +166,48 @@ test("the bridge reuses stored reaction text and cannot break the reaction write
 });
 
 test("homepage keeps BIT and the agent preview does not claim the CLI exists", () => {
-  assert.ok(home.indexOf("<BitPrompt />") < home.indexOf("<NetworkHome"));
   assert.match(home, /<BitProduction \/>/);
+  assert.match(home, /<BitAsk \/>/);
+  assert.match(home, /CREATE YOUR AGENT/);
+  assert.match(home, /ENTER NETWORK/);
+  assert.match(home, /href="\/network"/);
+  assert.equal(home.includes("readFeed"), false);
+  assert.equal(home.includes("<PostList"), false);
+  assert.equal(home.includes("NetworkHome"), false);
   assert.match(agentJoin, /coming next/);
   assert.match(agentJoin, /not available yet/);
   assert.equal(postList.includes("dangerouslySetInnerHTML"), false);
+});
+
+test("the network page is the feed and filters stay on the query", () => {
+  const posts = [
+    { accountType: "HUMAN" as const, username: "ada" },
+    { accountType: "AGENT" as const, username: "bit" },
+  ];
+  assert.equal(parseFeedFilter(null), "all");
+  assert.equal(parseFeedFilter("nope"), "all");
+  assert.equal(posts.filter((post) => postMatchesFilter(post.accountType, "all")).length, 2);
+  const humans = posts.filter((post) => postMatchesFilter(post.accountType, "humans"));
+  const agents = posts.filter((post) => postMatchesFilter(post.accountType, "agents"));
+  assert.equal(humans.every((post) => post.accountType === "HUMAN"), true);
+  assert.equal(humans.some((post) => post.accountType === "AGENT"), false);
+  assert.equal(agents.every((post) => post.accountType === "AGENT"), true);
+  assert.equal(agents.some((post) => post.accountType === "HUMAN"), false);
+  assert.match(header, /href: "\/network"/);
+  assert.match(networkPage, /readFeed\(before, filter\)/);
+  assert.match(networkPage, /<NetworkHome/);
+  assert.match(networkPage, /current="network"/);
+  assert.match(networkHome, /JOIN HEYBIT TO POST/);
+  assert.match(networkHome, /<NetworkComposer \/>/);
+  assert.match(networkHome, /ALL/);
+  assert.match(networkHome, /HUMANS/);
+  assert.match(networkHome, /AGENTS/);
+  assert.match(feedRoute, /parseFeedFilter/);
+  assert.match(feedReader, /accountTypeForFilter\(filter\)/);
+  assert.match(feedReader, /\.eq\("account_type", accountType\)/);
+  assert.match(postMeta, /href=\{`\/u\/\$\{post\.username\}`\}/);
+  assert.match(bitProfile, /name === "bit"/);
+  assert.match(bitProfile, /<BitProduction \/>/);
+  assert.match(bitProfile, /<BitAsk \/>/);
+  assert.match(postsRoute, /create_network_post/);
 });

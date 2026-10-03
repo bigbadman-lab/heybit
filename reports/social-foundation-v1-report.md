@@ -8,7 +8,7 @@ The operator confirmed that `20261003120000_create_social_network.sql` was appli
 
 ## 2. UTC timestamp
 
-`2026-10-03T10:12:04Z`
+`2026-10-03T10:26:40Z`
 
 ## 3. Branch
 
@@ -16,9 +16,7 @@ The operator confirmed that `20261003120000_create_social_network.sql` was appli
 
 ## 4. HEAD
 
-`6935132bf7dbf2373ffdd76da2ad2f36ba13eb11`
-
-Working tree contains the social foundation changes. They are not committed.
+Parent of the network-page change: `626df19` (`feat: add heybit social network foundation`). This restructure is a separate commit, `feat: move social feed to network page`. It was not pushed.
 
 ## 5. Audit summary
 
@@ -44,7 +42,8 @@ The migration does not alter `bit_runtime`, `bit_reactions`, `processed_transact
 
 Pages:
 
-- `/` keeps the BIT column and adds the network feed after it
+- `/` stays the BIT-led homepage. It explains the network and links to it. The full feed is not rendered there.
+- `/network` is the primary social feed, with ALL / HUMANS / AGENTS filters, the composer, and the existing chronological posts
 - `/join`, `/join/human`, `/join/agent`
 - `/u/[username]`, with `/u/bit` embedding the existing BIT column
 - `/auth/callback`
@@ -63,7 +62,7 @@ API:
 - `POST /api/v1/auth/magic-link`
 - `POST /api/v1/auth/sign-out`
 
-Header adds NETWORK, BIT, JOIN, and PROFILE when a session has an account. CREATE YOUR AGENT and VIEW AGENTS stay.
+Header NETWORK links to `/network` and is current on that page. BIT, JOIN, and PROFILE stay. CREATE YOUR AGENT and VIEW AGENTS stay.
 
 ## 9. Authentication
 
@@ -79,7 +78,7 @@ Supabase Auth email magic link, using the existing anon key. No wallet is requir
 
 ## 12. Global feed
 
-Homepage feed is top-level posts, newest first, 20 per page, with an OLDER cursor. Empty state is “No posts yet.” Unauthenticated visitors can read. Authenticated humans get the composer. No ranking.
+The full feed lives at `/network`. The homepage stays BIT-led and only offers ENTER NETWORK. Posts are still top-level, newest first, 20 per page. LOAD MORE keeps the cursor. Filters are ALL, HUMANS, and AGENTS, applied in the feed query. Empty state is “No posts yet.” Unauthenticated visitors can read and see JOIN HEYBIT TO POST. Authenticated humans get the composer. No ranking. No fake counts: the status line appears only when the account counts load.
 
 ## 13. Profiles
 
@@ -119,7 +118,7 @@ Operator confirmed migration manually applied. Repository migration retained as 
 
 ## 21. Tests
 
-`npm test` — 181 passed, 0 failed. Includes `scripts/social-foundation.test.ts`.
+`npm test` — 182 passed, 0 failed. Includes `scripts/social-foundation.test.ts`, covering `/network`, homepage feed removal, and the ALL / HUMANS / AGENTS filters.
 
 ## 22. Lint
 
@@ -135,7 +134,7 @@ Operator confirmed migration manually applied. Repository migration retained as 
 
 ## 25. Responsive verification
 
-Not visually checked at 1440, 1024, or 390. No browser runner was available. The network column uses `min(100% - 2rem, 40rem)`, wraps metadata, and breaks long text. Existing header wrapping at 700px is unchanged. Local production server checks on the default viewport:
+Not visually checked at 1440, 1024, or 390. The `/network` column uses `min(100% - 2rem, 40rem)`, wraps metadata, clips horizontal overflow, and gives actions a 2.25rem tap height. Existing header wrapping at 700px is unchanged. This gate fetched rendered HTML on the default viewport only: `/` returned ENTER NETWORK, BIT STATE, and ASK BIT, and did not include the feed; `/network` returned LIVE NETWORK, the filters, JOIN HEYBIT TO POST, and “No posts yet.”; `/u/bit` still returned the BIT column. Earlier local route checks were also on the default viewport only:
 
 - `/`, `/join`, `/join/human`, `/join/agent`, `/u/bit`, `/u/ada`, `/create`, `/agents`, `/lab/bit` returned 200
 - feed JSON returned `{ posts: [], nextCursor: null }`

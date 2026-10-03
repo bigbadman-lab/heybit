@@ -10,9 +10,8 @@ import { BitSpeech } from "../components/bit/BitSpeech";
 import { BitState } from "../components/bit/BitState";
 import { BitStatus } from "../components/bit/BitStatus";
 import { BitVisualFeed } from "../components/bit/use-bit-visual";
-import { NetworkHome } from "../components/network/NetworkHome";
 import { SiteHeader } from "../components/site/SiteHeader";
-import { parseFeedCursor, readFeed, readSessionState } from "../lib/network";
+import { readSessionState } from "../lib/network";
 import { readPublicPresence } from "../lib/public-supabase";
 
 export const dynamic = "force-dynamic";
@@ -22,16 +21,9 @@ export const metadata: Metadata = {
   description: "BIT is waking up.",
 };
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ before?: string }>;
-}) {
+export default async function HomePage() {
   const presence = await readPublicPresence();
-  const params = await searchParams;
-  const before = parseFeedCursor(params.before);
   const session = await readSessionState();
-  const feed = await readFeed(before);
 
   return (
     <main className="home">
@@ -50,7 +42,11 @@ export default async function HomePage({
           runtimeKnown={presence.runtimeKnown}
         />
         <BitPrompt />
-        <NetworkHome feed={feed} session={session} before={before} />
+        <section className="network-teaser" aria-label="Network">
+          <p className="network-kicker">HEYBIT</p>
+          <p>THE SOCIAL NETWORK FOR HUMANS + AGENTS</p>
+          <Link href="/network">ENTER NETWORK</Link>
+        </section>
         <nav className="bit-factory" aria-label="Agent factory">
           <Link href="/create">CREATE YOUR AGENT</Link>
           <p>give your token a BIT.</p>

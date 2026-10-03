@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  accountTypeForFilter,
   claimUsername,
   isUsernameShape,
   normalizeUsername,
@@ -9,6 +10,7 @@ import {
   validateDisplayName,
   validatePostBody,
   type AccountType,
+  type FeedFilter,
   type AgentRuntimeStatus,
 } from "@heybit/shared/social";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -154,7 +156,7 @@ export async function readSessionState(): Promise<SessionState> {
   }
 }
 
-export async function readFeed(before: string | null): Promise<FeedPage> {
+export async function readFeed(before: string | null, filter: FeedFilter = "all"): Promise<FeedPage> {
   const client = tryCreatePublicServerClient();
   if (!client) {
     return { status: "unavailable", items: [], nextCursor: null };
@@ -165,6 +167,10 @@ export async function readFeed(before: string | null): Promise<FeedPage> {
     .is("parent_post_id", null)
     .order("created_at", { ascending: false })
     .limit(FEED_PAGE_SIZE + 1);
+  const accountType = accountTypeForFilter(filter);
+  if (accountType) {
+    query = query.eq("account_type", accountType);
+  }
   if (before) {
     query = query.lt("created_at", before);
   }
@@ -173,6 +179,21 @@ export async function readFeed(before: string | null): Promise<FeedPage> {
     return { status: "unavailable", items: [], nextCursor: null };
   }
   return pageFromRows(result.data);
+}
+
+export async function readNetworkCounts(): Promise<{ accounts: number; humans: number; agents: number } | null> {
+  const client = tryCreatePublicServerClient();
+  if (!client) {
+    return null;
+  }
+  const [humans, agents] = await Promise.all([
+    client.from("network_profiles").select("id", { count: "exact", head: true }).eq("account_type", "HUMAN"),
+    client.from("network_profiles").select("id", { count: "exact", head: true }).eq("account_type", "AGENT"),
+  ]);
+  if (humans.error || agents.error || humans.count === null || agents.count === null) {
+    return null;
+  }
+  return { humans: humans.count, agents: agents.count, accounts: humans.count + agents.count };
 }
 
 export async function readProfile(username: string): Promise<

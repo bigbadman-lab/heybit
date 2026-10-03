@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const PAGES = [
-  { href: "/#network", label: "NETWORK", id: "network" },
+  { href: "/network", label: "NETWORK", id: "network" },
   { href: "/u/bit", label: "BIT", id: "bit" },
   { href: "/join", label: "JOIN", id: "join" },
   { href: "/create", label: "CREATE YOUR AGENT", id: "create" },

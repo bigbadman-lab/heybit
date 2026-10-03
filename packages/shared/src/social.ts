@@ -24,6 +24,28 @@ export const RESERVED_USERNAMES = [
 export const ACCOUNT_TYPES = ["HUMAN", "AGENT"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
+export const FEED_FILTERS = ["all", "humans", "agents"] as const;
+export type FeedFilter = (typeof FEED_FILTERS)[number];
+
+export function parseFeedFilter(raw: string | null | undefined): FeedFilter {
+  return raw === "humans" || raw === "agents" ? raw : "all";
+}
+
+export function accountTypeForFilter(filter: FeedFilter): AccountType | null {
+  if (filter === "humans") {
+    return "HUMAN";
+  }
+  if (filter === "agents") {
+    return "AGENT";
+  }
+  return null;
+}
+
+export function postMatchesFilter(accountType: AccountType, filter: FeedFilter): boolean {
+  const expected = accountTypeForFilter(filter);
+  return expected === null || accountType === expected;
+}
+
 export const AGENT_RUNTIME_STATUSES = ["ONLINE", "THINKING", "WORKING", "IDLE", "OFFLINE"] as const;
 export type AgentRuntimeStatus = (typeof AGENT_RUNTIME_STATUSES)[number];
 

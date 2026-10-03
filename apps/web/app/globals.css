@@ -1079,6 +1079,41 @@ main.home.factory .factory-lead a:focus-visible {
   box-sizing: border-box;
 }
 
+.network-page {
+  margin-top: var(--bit-md);
+  overflow-x: clip;
+}
+
+.network-teaser {
+  width: min(100%, var(--bit-column, 22rem));
+  margin-top: var(--bit-lg);
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+}
+
+.network-teaser p {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+.network-teaser a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: #f3f0e8;
+  text-decoration: none;
+  border: 1px solid rgba(243, 240, 232, 0.22);
+  padding: 0.45rem 0.7rem;
+}
+
+.network-teaser a:hover,
+.network-teaser a:focus-visible {
+  outline: 1px solid rgba(243, 240, 232, 0.7);
+  outline-offset: 3px;
+}
+
 .network-kicker,
 .network-note,
 .network-meta,
@@ -1098,6 +1133,7 @@ main.home.factory .factory-lead a:focus-visible {
   color: rgba(243, 240, 232, 0.62);
 }
 
+.network h1,
 .network h2,
 .network-profile h1 {
   margin: 0;
@@ -1131,6 +1167,35 @@ main.home.factory .factory-lead a:focus-visible {
 .network-choice a:focus-visible {
   outline: 1px solid rgba(243, 240, 232, 0.7);
   outline-offset: 3px;
+}
+
+.network-live {
+  margin-top: var(--bit-md);
+  padding-top: var(--bit-sm);
+  border-top: 1px solid rgba(243, 240, 232, 0.16);
+}
+
+.network-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.network-filters a {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid rgba(243, 240, 232, 0.22);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+.network-filters a[aria-current="page"] {
+  border-color: #f3f0e8;
+  color: #f3f0e8;
 }
 
 .network-feed {
@@ -1183,6 +1248,7 @@ main.home.factory .factory-lead a:focus-visible {
 .network-actions button,
 .network-counts button,
 .network-form button {
+  min-height: 2.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.68rem;
   letter-spacing: 0.08em;
