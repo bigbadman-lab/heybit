@@ -1,31 +1,31 @@
-import { isUuid, networkJson, requireUserClient, rpcFailure } from "../../../../../../lib/network";
+import { walletSetLike } from "../../../../../../lib/human-wallet-store";
+import { isUuid, networkJson, requireHumanActor, rpcFailure } from "../../../../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
-  return setLike(context, "like_network_post", true);
+  return setLike(context, true);
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
-  return setLike(context, "unlike_network_post", false);
+  return setLike(context, false);
 }
 
 async function setLike(
   context: { params: Promise<{ id: string }> },
-  fn: "like_network_post" | "unlike_network_post",
-  liked: boolean,
+  like: boolean,
 ): Promise<Response> {
   const { id } = await context.params;
   if (!isUuid(id)) {
     return networkJson({ error: "That post is not on the network." }, 404);
   }
-  const auth = await requireUserClient();
-  if ("response" in auth) {
-    return auth.response;
+  const auth = await requireHumanActor(null, "writer");
+  if ("response" in auth || !auth.accountId) {
+    return "response" in auth ? auth.response : networkJson({ error: "Choose a username before doing that." }, 409);
   }
-  const result = await auth.client.rpc(fn, { p_post_id: id });
+  const result = await walletSetLike(auth.accountId, id, like);
   if (result.error) {
     return rpcFailure(result.error);
   }
-  return networkJson({ liked });
+  return networkJson({ liked: like });
 }
