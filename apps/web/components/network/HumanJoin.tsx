@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Provider } from "@reown/appkit-adapter-solana/react";
-import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
+import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from "@reown/appkit/react";
 import { useWalletGate } from "../wallet/ReownProvider";
-import { normalizeWalletSignature } from "../../lib/wallet-signature";
+import { normalizeWalletSignature, type SiwsInput } from "../../lib/wallet-signature";
 
 const SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
@@ -35,11 +35,22 @@ function ConnectedJoin() {
   const solana = useAppKitAccount({ namespace: "solana" });
   const active = useAppKitAccount();
   const { walletProvider } = useAppKitProvider<Provider>("solana");
+  const { disconnect } = useDisconnect();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const wallet = solana.address && SOLANA_ADDRESS.test(solana.address) ? solana.address : null;
   const connected = Boolean(wallet) && solana.isConnected;
   const wrongNamespace = !connected && (active.isConnected || caipFamily(active) === "eip155");
+
+  async function disconnectWallet() {
+    await fetch("/api/v1/auth/sign-out", { method: "POST", credentials: "same-origin" });
+    try {
+      await disconnect();
+    } catch {
+      // The HEYBIT cookie is what authorizes writes.
+    }
+    router.refresh();
+  }
 
   async function verify() {
     if (!wallet || !walletProvider || pending) {
@@ -79,6 +90,9 @@ function ConnectedJoin() {
           <button type="button" onClick={() => void verify()} disabled={pending || !walletProvider}>
             VERIFY WALLET
           </button>
+          <button type="button" onClick={() => void disconnectWallet()} disabled={pending}>
+            DISCONNECT
+          </button>
           {error ? <p role="alert">{error}</p> : null}
         </div>
       </>
@@ -115,22 +129,85 @@ async function verifyWallet(wallet: string, provider: Provider): Promise<void> {
   if (!message || !nonce) {
     throw new Error("Wallet connect is unavailable.");
   }
-  const signed: unknown = await provider.signMessage(new TextEncoder().encode(message));
-  const signature = normalizeWalletSignature(signed);
-  if (!signature) {
-    throw new Error("The wallet signature was not accepted. Try again.");
-  }
+  const signIn = readSignIn(issued);
+  const signed = await signSiws(provider, signIn, message);
   const verified = await fetch("/api/v1/auth/wallet/verify", {
     method: "POST",
     credentials: "same-origin",
     cache: "no-store",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ wallet, chainFamily: "solana", nonce, signature }),
+    body: JSON.stringify({ wallet, chainFamily: "solana", nonce, signature: signed.signature, message: signed.message }),
   });
   const payload: unknown = await verified.json().catch(() => null);
   if (!verified.ok) {
     throw new Error(messageOf(payload) ?? "The wallet signature was not accepted. Try again.");
   }
+}
+
+async function signSiws(
+  provider: Provider,
+  signIn: SiwsInput | null,
+  fallbackMessage: string,
+): Promise<{ message: string; signature: string }> {
+  const feature = readSignInFeature(provider);
+  if (feature && signIn) {
+    const outputs = await feature.signIn(signIn);
+    const output = Array.isArray(outputs) ? outputs[0] : outputs;
+    const signedMessage = output && typeof output === "object" && "signedMessage" in output ? output.signedMessage : null;
+    const signatureValue = output && typeof output === "object" && "signature" in output ? output.signature : null;
+    const message = signedMessage instanceof Uint8Array ? new TextDecoder().decode(signedMessage) : "";
+    const signature = normalizeWalletSignature(signatureValue);
+    if (!message || !signature) {
+      throw new Error("The wallet signature was not accepted. Try again.");
+    }
+    return { message, signature };
+  }
+  const signed: unknown = await provider.signMessage(new TextEncoder().encode(fallbackMessage));
+  const signature = normalizeWalletSignature(signed);
+  if (!signature) {
+    throw new Error("The wallet signature was not accepted. Try again.");
+  }
+  return { message: fallbackMessage, signature };
+}
+
+function readSignInFeature(provider: Provider): { signIn: (input: SiwsInput) => Promise<unknown> } | null {
+  const wallet = (provider as { wallet?: { features?: Record<string, { signIn?: (input: SiwsInput) => Promise<unknown> }> } }).wallet;
+  const feature = wallet?.features?.["solana:signIn"];
+  if (feature?.signIn) {
+    return { signIn: feature.signIn };
+  }
+  return null;
+}
+
+function readSignIn(value: unknown): SiwsInput | null {
+  const record = recordValue(value, "signIn");
+  if (!record) {
+    return null;
+  }
+  const domain = recordString(record, "domain");
+  const address = recordString(record, "address");
+  const statement = recordString(record, "statement");
+  const uri = recordString(record, "uri");
+  const version = recordString(record, "version");
+  const chainId = recordString(record, "chainId");
+  const nonce = recordString(record, "nonce");
+  const issuedAt = recordString(record, "issuedAt");
+  const expirationTime = recordString(record, "expirationTime");
+  if (!domain || !address || !statement || !uri || !version || !chainId || !nonce || !issuedAt || !expirationTime) {
+    return null;
+  }
+  return { domain, address, statement, uri, version, chainId, nonce, issuedAt, expirationTime };
+}
+
+function recordValue(value: unknown, key: string): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || !(key in value)) {
+    return null;
+  }
+  const field = (value as Record<string, unknown>)[key];
+  if (typeof field !== "object" || field === null || Array.isArray(field)) {
+    return null;
+  }
+  return field as Record<string, unknown>;
 }
 
 function shorten(address: string): string {

@@ -3,7 +3,7 @@ import { generateKeyPairSync, randomUUID, sign, type KeyObject } from "node:cryp
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { encodeBase58 } from "@heybit/shared/factory";
-import { normalizeWalletSignature } from "../apps/web/lib/wallet-signature.js";
+import { normalizeWalletSignature, parseSiwsMessage } from "../apps/web/lib/wallet-signature.js";
 import { challengeMessage } from "../apps/web/lib/agent-session.js";
 import {
   planHumanFollow,
@@ -75,10 +75,11 @@ test("a human challenge is domain-bound, expires, and cannot be replayed", () =>
   if (!issued) {
     return;
   }
-  assert.match(issued.message, /HEYBIT human/);
-  assert.match(issued.message, /domain:heybit.fun/);
-  assert.match(issued.message, /chain:solana/);
-  assert.match(issued.message, new RegExp(`wallet:${owner.wallet}`));
+  assert.match(issued.message, /heybit\.fun wants you to sign in with your Solana account:/);
+  assert.match(issued.message, new RegExp(owner.wallet));
+  assert.match(issued.message, /Chain ID: mainnet/);
+  assert.match(issued.message, /Nonce: abababababababababababababababab/);
+  assert.equal(issued.signIn.chainId, "mainnet");
   assert.equal(acceptChainFamily("eip155"), false);
   assert.equal(acceptChainFamily("solana"), true);
 
@@ -401,6 +402,14 @@ test("wallet signatures normalize and a failed check can be replaced", () => {
   assert.equal(normalizeWalletSignature({ signature: "not-a-signature" }), null);
 
   const owner = freshWallet();
+  const sample = issueHumanChallenge({ wallet: owner.wallet, domain: "heybit.fun", nowMs: 3_000, nonce: "ef".repeat(16) });
+  assert.ok(sample);
+  if (sample) {
+    const parsed = parseSiwsMessage(sample.message);
+    assert.equal(parsed?.address, owner.wallet);
+    assert.equal(parsed?.nonce, "ef".repeat(16));
+    assert.equal(parsed?.domain, "heybit.fun");
+  }
   const failed = issueHumanChallenge({ wallet: owner.wallet, domain: "heybit.fun", nowMs: 1_000, nonce: "ab".repeat(16) });
   assert.ok(failed);
   if (!failed) {
@@ -452,6 +461,8 @@ test("join layout stays in the shell and auth routes stay on node", () => {
   assert.match(humanJoin, /● CONNECTED/);
   assert.match(humanJoin, /CONNECT A WALLET/);
   assert.match(humanJoin, /normalizeWalletSignature/);
+  assert.match(humanJoin, /solana:signIn/);
+  assert.match(humanJoin, /DISCONNECT/);
   assert.match(humanJoin, /\/api\/v1\/auth\/wallet\/challenge/);
   assert.match(humanJoin, /\/api\/v1\/auth\/wallet\/session/);
   assert.match(humanJoin, /Connect a Solana wallet/);

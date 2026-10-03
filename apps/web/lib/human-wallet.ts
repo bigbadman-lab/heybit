@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { isCanonicalMint } from "@heybit/shared";
 import { walletSignatureValid } from "./agent-session";
+import { SIWS_CHAIN_ID, SIWS_STATEMENT, SIWS_VERSION, parseSiwsMessage, siwsMessage, type SiwsInput } from "./wallet-signature";
 
 export const HUMAN_CHAIN_FAMILY = "solana" as const;
 export type HumanChainFamily = typeof HUMAN_CHAIN_FAMILY;
@@ -19,6 +20,7 @@ export interface HumanChallenge {
   chainFamily: HumanChainFamily;
   nonce: string;
   message: string;
+  signIn: SiwsInput;
   expiresAtMs: number;
   used: boolean;
 }
@@ -33,14 +35,31 @@ export function humanChallengeMessage(input: {
   domain: string;
   wallet: string;
   nonce: string;
+  uri: string;
+  issuedAt: string;
+  expirationTime: string;
 }): string {
-  return [
-    "HEYBIT human",
-    `domain:${input.domain}`,
-    "chain:solana",
-    `wallet:${input.wallet}`,
-    `nonce:${input.nonce}`,
-  ].join("\n");
+  return siwsMessage({
+    domain: input.domain,
+    address: input.wallet,
+    statement: SIWS_STATEMENT,
+    uri: input.uri,
+    version: SIWS_VERSION,
+    chainId: SIWS_CHAIN_ID,
+    nonce: input.nonce,
+    issuedAt: input.issuedAt,
+    expirationTime: input.expirationTime,
+  });
+}
+
+export function requestOrigin(request: Request, domain: string): string {
+  const forwarded = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  const proto = forwarded === "http" || forwarded === "https"
+    ? forwarded
+    : domain.startsWith("localhost") || domain.startsWith("127.0.0.1")
+      ? "http"
+      : "https";
+  return `${proto}://${domain}`;
 }
 
 export function newHumanNonce(): string {
@@ -67,6 +86,7 @@ export function issueHumanChallenge(input: {
   domain: string;
   nowMs: number;
   nonce?: string;
+  uri?: string;
 }): HumanChallenge | null {
   const domain = normalizeHumanDomain(input.domain);
   if (!isCanonicalMint(input.wallet) || !domain) {
@@ -76,13 +96,29 @@ export function issueHumanChallenge(input: {
   if (!/^[a-f0-9]{32}$/.test(nonce)) {
     return null;
   }
+  const issuedAt = new Date(input.nowMs).toISOString();
+  const expiresAtMs = input.nowMs + HUMAN_CHALLENGE_MS;
+  const expirationTime = new Date(expiresAtMs).toISOString();
+  const uri = input.uri ?? `https://${domain}/join/human`;
+  const signIn: SiwsInput = {
+    domain,
+    address: input.wallet,
+    statement: SIWS_STATEMENT,
+    uri,
+    version: SIWS_VERSION,
+    chainId: SIWS_CHAIN_ID,
+    nonce,
+    issuedAt,
+    expirationTime,
+  };
   return {
     wallet: input.wallet,
     domain,
     chainFamily: HUMAN_CHAIN_FAMILY,
     nonce,
-    message: humanChallengeMessage({ domain, wallet: input.wallet, nonce }),
-    expiresAtMs: input.nowMs + HUMAN_CHALLENGE_MS,
+    message: siwsMessage(signIn),
+    signIn,
+    expiresAtMs,
     used: false,
   };
 }
@@ -93,6 +129,7 @@ export function acceptHumanProof(input: {
   domain: string;
   signature: string;
   nowMs: number;
+  signedMessage?: string;
 }): { ok: true; challenge: HumanChallenge } | { ok: false; reason: "expired" | "used" | "wallet" | "domain" | "chain" | "signature"; challenge: HumanChallenge } {
   const domain = normalizeHumanDomain(input.domain);
   if (input.challenge.chainFamily !== HUMAN_CHAIN_FAMILY) {
@@ -110,8 +147,19 @@ export function acceptHumanProof(input: {
   if (input.nowMs > input.challenge.expiresAtMs) {
     return { ok: false, reason: "expired", challenge: input.challenge };
   }
-  const burned: HumanChallenge = { ...input.challenge, used: true };
-  if (!walletSignatureValid(input.challenge.wallet, input.challenge.message, input.signature)) {
+  const signedMessage = input.signedMessage ?? input.challenge.message;
+  const parsed = parseSiwsMessage(signedMessage);
+  if (
+    !parsed ||
+    parsed.address !== input.challenge.wallet ||
+    parsed.nonce !== input.challenge.nonce ||
+    normalizeHumanDomain(parsed.domain) !== input.challenge.domain ||
+    Date.parse(parsed.expirationTime) !== input.challenge.expiresAtMs
+  ) {
+    return { ok: false, reason: "signature", challenge: { ...input.challenge, used: true } };
+  }
+  const burned: HumanChallenge = { ...input.challenge, message: signedMessage, used: true };
+  if (!walletSignatureValid(input.challenge.wallet, signedMessage, input.signature)) {
     return { ok: false, reason: "signature", challenge: burned };
   }
   return { ok: true, challenge: burned };

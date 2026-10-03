@@ -27,8 +27,8 @@ export interface OpenHumanSession {
   expiresAtMs: number;
 }
 
-export async function storeHumanChallenge(wallet: string, domain: string, nowMs: number): Promise<HumanChallenge | null> {
-  const issued = issueHumanChallenge({ wallet, domain, nowMs });
+export async function storeHumanChallenge(wallet: string, domain: string, nowMs: number, uri: string): Promise<HumanChallenge | null> {
+  const issued = issueHumanChallenge({ wallet, domain, nowMs, uri });
   const client = serverAdminClient();
   if (!issued || !client) {
     return null;
@@ -49,6 +49,7 @@ export async function consumeHumanChallenge(input: {
   domain: string;
   nonce: string;
   signature: string;
+  message: string;
   nowMs: number;
 }): Promise<{ ok: true; wallet: string } | { ok: false; reason: "expired" | "used" | "wallet" | "domain" | "chain" | "signature" | "unavailable" }> {
   const client = serverAdminClient();
@@ -97,13 +98,25 @@ export async function consumeHumanChallenge(input: {
     expires_at: string;
     chain_family: string;
   };
+  const expiresAtMs = Date.parse(row.expires_at);
   const challenge: HumanChallenge = {
     wallet: row.wallet_address,
     domain: row.domain,
     chainFamily: HUMAN_CHAIN_FAMILY,
     nonce: input.nonce,
     message: row.message,
-    expiresAtMs: Date.parse(row.expires_at),
+    signIn: {
+      domain: row.domain,
+      address: row.wallet_address,
+      statement: "",
+      uri: "",
+      version: "1",
+      chainId: "mainnet",
+      nonce: input.nonce,
+      issuedAt: new Date(expiresAtMs).toISOString(),
+      expirationTime: new Date(expiresAtMs).toISOString(),
+    },
+    expiresAtMs,
     used: false,
   };
   const proof = acceptHumanProof({
@@ -111,6 +124,7 @@ export async function consumeHumanChallenge(input: {
     wallet: input.wallet,
     domain: input.domain,
     signature: input.signature,
+    signedMessage: input.message,
     nowMs: input.nowMs,
   });
   if (!proof.ok) {

@@ -10,14 +10,17 @@ export async function POST(request: Request): Promise<Response> {
   const domain = requestDomain(request);
   const body = await readJson(request);
   const record = asRecord(body);
-  if (!domain || !record || Object.keys(record).sort().join() !== "chainFamily,nonce,signature,wallet") {
+  if (!domain || !record || Object.keys(record).sort().join() !== "chainFamily,message,nonce,signature,wallet") {
     return networkJson({ error: "Invalid request." }, 400);
   }
   if (
     !acceptChainFamily(record.chainFamily) ||
     !isCanonicalMint(record.wallet) ||
     typeof record.nonce !== "string" ||
-    typeof record.signature !== "string"
+    typeof record.signature !== "string" ||
+    typeof record.message !== "string" ||
+    record.message.length < 1 ||
+    record.message.length > 2_000
   ) {
     return networkJson({ error: "Wallet is invalid." }, 400);
   }
@@ -26,6 +29,7 @@ export async function POST(request: Request): Promise<Response> {
     domain,
     nonce: record.nonce,
     signature: record.signature,
+    message: record.message,
     nowMs: Date.now(),
   });
   if (!proof.ok) {
@@ -37,13 +41,13 @@ export async function POST(request: Request): Promise<Response> {
         : proof.reason === "domain"
           ? "The site address did not match this check. Try again."
           : proof.reason === "unavailable"
-            ? "Wallet connect is unavailable."
+            ? "Sign-in could not start."
             : "The wallet signature was not accepted. Try again.";
     return networkJson({ error }, status);
   }
   const sealed = await openHumanSession(Date.now(), proof.wallet);
   if (!sealed) {
-    return networkJson({ error: "Wallet connect is unavailable." }, 503);
+    return networkJson({ error: "Sign-in could not start." }, 503);
   }
   const account = await findHumanByWallet(proof.wallet);
   if (!account) {

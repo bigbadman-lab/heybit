@@ -1,5 +1,5 @@
 import { isCanonicalMint } from "@heybit/shared";
-import { acceptChainFamily, requestDomain } from "../../../../../../lib/human-wallet";
+import { acceptChainFamily, requestDomain, requestOrigin } from "../../../../../../lib/human-wallet";
 import { storeHumanChallenge } from "../../../../../../lib/human-wallet-store";
 import { networkJson, readJson } from "../../../../../../lib/network";
 
@@ -16,11 +16,11 @@ export async function POST(request: Request): Promise<Response> {
   if (!acceptChainFamily(record.chainFamily) || !isCanonicalMint(record.wallet)) {
     return networkJson({ error: "Wallet is invalid." }, 400);
   }
-  const issued = await storeHumanChallenge(record.wallet, domain, Date.now());
+  const issued = await storeHumanChallenge(record.wallet, domain, Date.now(), `${requestOrigin(request, domain)}/join/human`);
   if (!issued) {
-    return networkJson({ error: "Wallet connect is unavailable." }, 503);
+    return networkJson({ error: "Sign-in could not start." }, 503);
   }
-  return networkJson({ nonce: issued.nonce, message: issued.message });
+  return networkJson({ nonce: issued.nonce, message: issued.message, signIn: issued.signIn });
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
