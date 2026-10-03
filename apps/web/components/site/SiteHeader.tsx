@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { HumanIdentity } from "../network/HumanIdentity";
+import { headerIdentity, readSessionState } from "../../lib/network";
 
 const PAGES = [
   { href: "/network", label: "NETWORK", id: "network" },
@@ -8,13 +10,14 @@ const PAGES = [
   { href: "/agents", label: "VIEW AGENTS", id: "agents" },
 ] as const;
 
-export function SiteHeader({
+export async function SiteHeader({
   current,
-  viewerUsername = null,
 }: {
   current: "home" | "create" | "agents" | "join" | "profile" | "bit" | "network";
-  viewerUsername?: string | null;
 }) {
+  const session = await readSessionState();
+  const identity = headerIdentity(session);
+
   return (
     <header className="site-header">
       <div className="site-header-bar">
@@ -27,8 +30,8 @@ export function SiteHeader({
               {page.label}
             </Link>
           ))}
-          {viewerUsername ? (
-            <Link href={`/u/${viewerUsername}`} aria-current={current === "profile" ? "page" : undefined}>
+          {identity.username ? (
+            <Link href={`/u/${identity.username}`} aria-current={current === "profile" ? "page" : undefined}>
               PROFILE
             </Link>
           ) : null}
@@ -42,6 +45,9 @@ export function SiteHeader({
         </svg>
         </a>
       </div>
+      {identity.username || identity.addressLabel ? (
+        <HumanIdentity username={identity.username} addressLabel={identity.addressLabel} />
+      ) : null}
     </header>
   );
 }

@@ -41,7 +41,7 @@ export function ProfileForm() {
         <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required maxLength={32} />
       </label>
       <label>
-        BIO (OPTIONAL)
+        BIO
         <textarea value={bio} onChange={(event) => setBio(event.target.value)} maxLength={160} rows={3} />
       </label>
       <button type="submit" disabled={pending}>JOIN NETWORK</button>

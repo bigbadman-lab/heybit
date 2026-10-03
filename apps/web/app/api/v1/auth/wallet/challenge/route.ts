@@ -3,6 +3,7 @@ import { acceptChainFamily, requestDomain } from "../../../../../../lib/human-wa
 import { storeHumanChallenge } from "../../../../../../lib/human-wallet-store";
 import { networkJson, readJson } from "../../../../../../lib/network";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {

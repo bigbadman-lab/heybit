@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { CreateAgent } from "../../components/factory/CreateAgent";
 import { SiteHeader } from "../../components/site/SiteHeader";
-import { readSessionState } from "../../lib/network";
 
 export const metadata: Metadata = {
   title: "Create your agent — HEYBIT",
@@ -9,10 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default async function CreateAgentPage() {
-  const session = await readSessionState();
   return (
     <main className="home factory">
-      <SiteHeader current="create" viewerUsername={session.status === "ready" ? session.account.username : null} />
+      <SiteHeader current="create" />
       <h1 className="factory-title">CREATE YOUR AGENT</h1>
       <p className="factory-lead">give your token a BIT.</p>
       <CreateAgent />

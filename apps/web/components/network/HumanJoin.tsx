@@ -1,97 +1,108 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Provider } from "@reown/appkit-adapter-solana/react";
 import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
-import { encodeBase58 } from "@heybit/shared/factory";
 import { useWalletGate } from "../wallet/ReownProvider";
+import { normalizeWalletSignature } from "../../lib/wallet-signature";
 
 const SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 export function HumanJoin() {
   const gate = useWalletGate();
-  return (
-    <>
-      <p className="network-kicker">HUMAN</p>
-      <h1 className="factory-title">JOIN AS HUMAN</h1>
-      <p className="factory-lead">Connect your wallet to join HEYBIT.</p>
-      {!gate.configured ? <p role="alert">Wallet connect is unavailable.</p> : null}
-      {gate.configured && !gate.ready ? (
+  if (!gate.configured) {
+    return <p role="alert">Wallet connect is unavailable.</p>;
+  }
+  if (!gate.ready) {
+    return (
+      <>
+        <p className="network-kicker">JOIN / HUMAN</p>
+        <h1 className="factory-title">CONNECT A WALLET</h1>
+        <p className="factory-lead">Your wallet proves account ownership. Your username is what the network sees.</p>
         <div className="factory-form network-form">
           <button type="button" disabled>CONNECT WALLET</button>
         </div>
-      ) : null}
-      {gate.ready ? <ConnectedJoin /> : null}
-    </>
-  );
+      </>
+    );
+  }
+  return <ConnectedJoin />;
 }
 
 function ConnectedJoin() {
   const router = useRouter();
   const { open } = useAppKit();
-  const { address, isConnected } = useAppKitAccount({ namespace: "solana" });
+  const solana = useAppKitAccount({ namespace: "solana" });
+  const active = useAppKitAccount();
   const { walletProvider } = useAppKitProvider<Provider>("solana");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  const wallet = address && SOLANA_ADDRESS.test(address) ? address : null;
-  const canSign = Boolean(walletProvider);
+  const wallet = solana.address && SOLANA_ADDRESS.test(solana.address) ? solana.address : null;
+  const connected = Boolean(wallet) && solana.isConnected;
+  const wrongNamespace = !connected && (active.isConnected || caipFamily(active) === "eip155");
 
-  useEffect(() => {
-    if (!wallet || !walletProvider) {
+  async function verify() {
+    if (!wallet || !walletProvider || pending) {
       return;
     }
-    let cancelled = false;
     setPending(true);
     setError(null);
-    void verifyWallet(wallet, walletProvider)
-      .then(() => {
-        if (!cancelled) {
-          router.refresh();
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) {
-          setError(cause instanceof Error ? cause.message : "The wallet signature was not accepted.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setPending(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-    // walletProvider identity changes every render. canSign only flips when signing becomes possible.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallet, canSign, router, attempt]);
+    try {
+      await verifyWallet(wallet, walletProvider);
+      const session = await fetch("/api/v1/auth/wallet/session", { cache: "no-store", credentials: "same-origin" });
+      const state: unknown = await session.json().catch(() => null);
+      if (!session.ok || !isAuthenticated(state)) {
+        throw new Error("The session was not saved. Try again.");
+      }
+      if (accountUsername(state)) {
+        router.push("/network");
+      }
+      router.refresh();
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : "The wallet signature was not accepted. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (connected && wallet) {
+    return (
+      <>
+        <p className="network-kicker">JOIN / HUMAN</p>
+        <h1 className="factory-title">WALLET</h1>
+        <p className="network-note">● CONNECTED</p>
+        <p className="network-note">{shorten(wallet)}</p>
+        <p className="factory-lead">
+          {pending ? "Confirm the signature in your wallet." : "Your wallet proves account ownership. Your username is what the network sees."}
+        </p>
+        <div className="factory-form network-form">
+          <button type="button" onClick={() => void verify()} disabled={pending || !walletProvider}>
+            VERIFY WALLET
+          </button>
+          {error ? <p role="alert">{error}</p> : null}
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="factory-form network-form">
-      {wallet && isConnected ? (
-        <>
-          <p className="network-kicker">CONNECTED</p>
-          <p className="network-note">{shorten(wallet)}</p>
-          <p className="factory-lead">{pending ? "Confirm the signature in your wallet." : "Verify wallet ownership to continue."}</p>
-        </>
-      ) : (
+    <>
+      <p className="network-kicker">JOIN / HUMAN</p>
+      <h1 className="factory-title">CONNECT A WALLET</h1>
+      <p className="factory-lead">Your wallet proves account ownership. Your username is what the network sees.</p>
+      {wrongNamespace ? <p role="alert">Connect a Solana wallet to join.</p> : null}
+      <div className="factory-form network-form">
         <button type="button" onClick={() => void open({ view: "Connect" })}>CONNECT WALLET</button>
-      )}
-      {error ? <p role="alert">{error}</p> : null}
-      {error && wallet ? (
-        <button type="button" onClick={() => setAttempt((value) => value + 1)}>
-          VERIFY WALLET
-        </button>
-      ) : null}
-    </div>
+      </div>
+    </>
   );
 }
 
 async function verifyWallet(wallet: string, provider: Provider): Promise<void> {
   const challenge = await fetch("/api/v1/auth/wallet/challenge", {
     method: "POST",
+    credentials: "same-origin",
+    cache: "no-store",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ wallet, chainFamily: "solana" }),
   });
@@ -104,19 +115,21 @@ async function verifyWallet(wallet: string, provider: Provider): Promise<void> {
   if (!message || !nonce) {
     throw new Error("Wallet connect is unavailable.");
   }
-  const signed = await provider.signMessage(new TextEncoder().encode(message));
-  const signature = encodeBase58(signed instanceof Uint8Array ? signed : new Uint8Array());
+  const signed: unknown = await provider.signMessage(new TextEncoder().encode(message));
+  const signature = normalizeWalletSignature(signed);
   if (!signature) {
-    throw new Error("The wallet signature was not accepted.");
+    throw new Error("The wallet signature was not accepted. Try again.");
   }
   const verified = await fetch("/api/v1/auth/wallet/verify", {
     method: "POST",
+    credentials: "same-origin",
+    cache: "no-store",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ wallet, chainFamily: "solana", nonce, signature }),
   });
   const payload: unknown = await verified.json().catch(() => null);
   if (!verified.ok) {
-    throw new Error(messageOf(payload) ?? "The wallet signature was not accepted.");
+    throw new Error(messageOf(payload) ?? "The wallet signature was not accepted. Try again.");
   }
 }
 
@@ -125,6 +138,29 @@ function shorten(address: string): string {
     return address;
   }
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+function caipFamily(account: object): string | null {
+  if (!("caipAddress" in account) || typeof account.caipAddress !== "string") {
+    return null;
+  }
+  const family = account.caipAddress.split(":")[0];
+  return family || null;
+}
+
+function isAuthenticated(value: unknown): boolean {
+  return typeof value === "object" && value !== null && "authenticated" in value && value.authenticated === true;
+}
+
+function accountUsername(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || !("account" in value)) {
+    return null;
+  }
+  const account = value.account;
+  if (typeof account !== "object" || account === null || !("username" in account)) {
+    return null;
+  }
+  return typeof account.username === "string" ? account.username : null;
 }
 
 function recordString(value: unknown, key: string): string | null {

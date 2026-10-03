@@ -34,9 +34,9 @@
     },
     {
       "name": "SUPABASE_SERVICE_ROLE_KEY",
-      "destinations": ["local", "render"],
+      "destinations": ["local", "render", "vercel"],
       "required": true,
-      "description": "Supabase service-role key. Local operator and Render worker only. Never expose to the browser."
+      "description": "Supabase service-role key. Server only: local operator, Render worker, and the Next.js server. Never expose to the browser."
     },
     {
       "name": "BIT_DEPLOYER_KEYPAIR_PATH",

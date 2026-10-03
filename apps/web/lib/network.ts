@@ -14,8 +14,9 @@ import {
   type AgentRuntimeStatus,
 } from "@heybit/shared/social";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { tryCreatePublicServerClient } from "./public-supabase";
-import { HUMAN_COOKIE, HUMAN_SESSION_MS, clientActorFields, gateHumanSession } from "./human-wallet";
+import { HUMAN_COOKIE, HUMAN_SESSION_MS, clientActorFields, gateHumanSession, shortenWallet } from "./human-wallet";
 import {
   findHumanByWallet,
   likedIdsForAccount,
@@ -36,8 +37,8 @@ export interface Viewer {
 export type SessionState =
   | { status: "anonymous" }
   | { status: "unavailable" }
-  | { status: "needs-profile" }
-  | { status: "ready"; account: Viewer };
+  | { status: "needs-profile"; walletLabel: string }
+  | { status: "ready"; account: Viewer; walletLabel: string };
 
 export interface SocialPost {
   id: string;
@@ -161,6 +162,28 @@ export async function clearHumanCookie(): Promise<void> {
   jar.set(HUMAN_COOKIE, "", humanCookieOptions(0));
 }
 
+export function humanAuthJson(body: unknown, status: number, token: string): Response {
+  const response = NextResponse.json(body, { status, headers: { "cache-control": "no-store" } });
+  response.cookies.set(HUMAN_COOKIE, token, humanCookieOptions(HUMAN_SESSION_MS / 1000));
+  return response;
+}
+
+export function clearHumanAuthJson(body: unknown, status = 200): Response {
+  const response = NextResponse.json(body, { status, headers: { "cache-control": "no-store" } });
+  response.cookies.set(HUMAN_COOKIE, "", humanCookieOptions(0));
+  return response;
+}
+
+export function headerIdentity(session: SessionState): { username: string | null; addressLabel: string | null } {
+  if (session.status === "ready") {
+    return { username: session.account.username, addressLabel: session.walletLabel };
+  }
+  if (session.status === "needs-profile") {
+    return { username: null, addressLabel: session.walletLabel };
+  }
+  return { username: null, addressLabel: null };
+}
+
 export async function readSessionState(): Promise<SessionState> {
   try {
     const token = await readHumanCookieToken();
@@ -175,10 +198,11 @@ export async function readSessionState(): Promise<SessionState> {
       return { status: "anonymous" };
     }
     const account = await findHumanByWallet(session.wallet);
+    const walletLabel = shortenWallet(session.wallet);
     if (!account) {
-      return { status: "needs-profile" };
+      return { status: "needs-profile", walletLabel };
     }
-    return { status: "ready", account };
+    return { status: "ready", account, walletLabel };
   } catch {
     return { status: "unavailable" };
   }

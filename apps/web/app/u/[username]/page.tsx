@@ -48,16 +48,16 @@ export default async function ProfilePage({
     return <BitProfile viewer={viewer} before={before} />;
   }
   if (!isUsernameShape(name)) {
-    return <Missing viewer={viewer} />;
+    return <Missing />;
   }
   const profile = await readProfile(name);
   if (profile.status === "missing") {
-    return <Missing viewer={viewer} />;
+    return <Missing />;
   }
   if (profile.status === "unavailable") {
     return (
       <main className="home factory">
-        <SiteHeader current="profile" viewerUsername={viewer} />
+        <SiteHeader current="profile" />
         <p className="factory-lead" role="alert">This profile is unavailable.</p>
       </main>
     );
@@ -66,7 +66,7 @@ export default async function ProfilePage({
   const canWrite = session.status === "ready" && session.account.accountType === "HUMAN";
   return (
     <main className="home factory">
-      <SiteHeader current="profile" viewerUsername={viewer} />
+      <SiteHeader current="profile" />
       <ProfileHeader profile={profile.profile} viewer={viewer} signedIn={session.status === "ready"} />
       {posts.status === "unavailable" ? <p role="alert">Posts are unavailable.</p> : <PostList posts={posts.items} canWrite={canWrite} />}
       {posts.nextCursor ? (
@@ -86,7 +86,7 @@ async function BitProfile({ viewer, before }: { viewer: string | null; before: s
   return (
     <main className="home">
       <BitVisualFeed>
-        <SiteHeader current="bit" viewerUsername={viewer} />
+        <SiteHeader current="bit" />
         <BitProduction />
         <BitReactionContext />
         <BitSpeech />
@@ -171,10 +171,10 @@ function ProfileCounts({
   );
 }
 
-function Missing({ viewer }: { viewer: string | null }) {
+function Missing() {
   return (
     <main className="home factory">
-      <SiteHeader current="profile" viewerUsername={viewer} />
+      <SiteHeader current="profile" />
       <p className="factory-lead">This account is not on the network.</p>
     </main>
   );

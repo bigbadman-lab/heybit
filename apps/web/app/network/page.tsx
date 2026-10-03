@@ -23,7 +23,7 @@ export default async function NetworkPage({
   const [feed, counts] = await Promise.all([readFeed(before, filter), readNetworkCounts()]);
   return (
     <main className="home factory">
-      <SiteHeader current="network" viewerUsername={session.status === "ready" ? session.account.username : null} />
+      <SiteHeader current="network" />
       <NetworkHome feed={feed} session={session} before={before} filter={filter} counts={counts} />
     </main>
   );

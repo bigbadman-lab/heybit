@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { AgentRoom } from "../../../components/factory/AgentRoom";
 import { SiteHeader } from "../../../components/site/SiteHeader";
-import { readSessionState } from "../../../lib/network";
 import { readPublicAgentProfile } from "../../../lib/public-factory";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +14,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function AgentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const profile = await readPublicAgentProfile(slug);
-  const session = await readSessionState();
   return (
     <main className="home factory">
-      <SiteHeader current="agents" viewerUsername={session.status === "ready" ? session.account.username : null} />
+      <SiteHeader current="agents" />
       {profile ? <AgentRoom profile={profile} /> : <p className="factory-lead">This agent is not available.</p>}
     </main>
   );

@@ -3,6 +3,7 @@ import { generateKeyPairSync, randomUUID, sign, type KeyObject } from "node:cryp
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { encodeBase58 } from "@heybit/shared/factory";
+import { normalizeWalletSignature } from "../apps/web/lib/wallet-signature.js";
 import { challengeMessage } from "../apps/web/lib/agent-session.js";
 import {
   planHumanFollow,
@@ -167,9 +168,14 @@ test("a verified wallet session is http-only and logout blocks writes", () => {
   assert.equal(humanSessionMatches("human-secret", sealed.token, freshWallet().wallet, now), false);
   assert.equal(humanSessionMatches("other-secret", sealed.token, owner.wallet, now), false);
   assert.equal(humanSessionMatches("human-secret", sealed.token, owner.wallet, sealed.expiresAtMs + 1), false);
-  assert.match(humanSessionCookie(sealed.token, true), /HttpOnly/);
-  assert.match(humanSessionCookie(sealed.token, true), /Secure/);
+  const cookie = humanSessionCookie(sealed.token, true);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.match(cookie, /SameSite=Lax/);
+  assert.match(cookie, /Path=\//);
+  assert.equal(cookie.toLowerCase().includes("domain="), false);
   assert.match(clearHumanSessionCookie(false), /Max-Age=0/);
+  assert.equal(clearHumanSessionCookie(true).toLowerCase().includes("domain="), false);
   assert.equal(readHumanCookie(`${HUMAN_COOKIE}=${sealed.token}`), sealed.token);
   assert.equal(HUMAN_COOKIE, "heybit_human");
 
@@ -372,4 +378,106 @@ test("human join drops email and leaves agent, network, and BIT routes intact", 
     headers: { "x-forwarded-host": "Heybit.fun" },
   });
   assert.equal(requestDomain(request), "heybit.fun");
+  const proxied = new Request("https://heybit-project.vercel.app/api/v1/auth/wallet/verify", {
+    headers: { host: "heybit.fun" },
+  });
+  assert.equal(requestDomain(proxied), "heybit.fun");
+  const ported = new Request("https://heybit.fun/api/v1/auth/wallet/verify", {
+    headers: { "x-forwarded-host": "heybit.fun:443" },
+  });
+  assert.equal(requestDomain(ported), "heybit.fun");
+});
+
+test("wallet signatures normalize and a failed check can be replaced", () => {
+  const bytes = new Uint8Array(64).fill(9);
+  const encoded = encodeBase58(bytes);
+  assert.equal(normalizeWalletSignature(bytes), encoded);
+  assert.equal(normalizeWalletSignature({ signature: bytes }), encoded);
+  assert.equal(normalizeWalletSignature(Array.from(bytes)), encoded);
+  assert.equal(normalizeWalletSignature(encoded), encoded);
+  assert.equal(normalizeWalletSignature(Buffer.from(bytes).toString("base64")), encoded);
+  assert.equal(normalizeWalletSignature(new Uint8Array()), null);
+  assert.equal(normalizeWalletSignature("1"), null);
+  assert.equal(normalizeWalletSignature({ signature: "not-a-signature" }), null);
+
+  const owner = freshWallet();
+  const failed = issueHumanChallenge({ wallet: owner.wallet, domain: "heybit.fun", nowMs: 1_000, nonce: "ab".repeat(16) });
+  assert.ok(failed);
+  if (!failed) {
+    return;
+  }
+  const rejected = acceptHumanProof({
+    challenge: failed,
+    wallet: owner.wallet,
+    domain: "heybit.fun",
+    signature: encoded,
+    nowMs: 1_000,
+  });
+  assert.equal(rejected.ok, false);
+  if (!rejected.ok) {
+    assert.equal(rejected.reason, "signature");
+    assert.equal(rejected.challenge.used, true);
+  }
+  const replacement = issueHumanChallenge({ wallet: owner.wallet, domain: "heybit.fun", nowMs: 2_000, nonce: "cd".repeat(16) });
+  assert.ok(replacement);
+  if (!replacement) {
+    return;
+  }
+  const accepted = acceptHumanProof({
+    challenge: replacement,
+    wallet: owner.wallet,
+    domain: "heybit.fun",
+    signature: owner.sign(replacement.message),
+    nowMs: 2_000,
+  });
+  assert.equal(accepted.ok, true);
+});
+
+test("join layout stays in the shell and auth routes stay on node", () => {
+  const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
+  const verifyRoute = readFileSync(new URL("../apps/web/app/api/v1/auth/wallet/verify/route.ts", import.meta.url), "utf8");
+  const sessionRoute = readFileSync(new URL("../apps/web/app/api/v1/auth/wallet/session/route.ts", import.meta.url), "utf8");
+  const signOutRoute = readFileSync(new URL("../apps/web/app/api/v1/auth/sign-out/route.ts", import.meta.url), "utf8");
+  const challengeRoute = readFileSync(new URL("../apps/web/app/api/v1/auth/wallet/challenge/route.ts", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../apps/web/components/site/SiteHeader.tsx", import.meta.url), "utf8");
+  const identity = readFileSync(new URL("../apps/web/components/network/HumanIdentity.tsx", import.meta.url), "utf8");
+  const networkHome = readFileSync(new URL("../apps/web/components/network/NetworkHome.tsx", import.meta.url), "utf8");
+  const createPage = readFileSync(new URL("../apps/web/app/create/page.tsx", import.meta.url), "utf8");
+  assert.match(humanPage, /className="home factory"/);
+  assert.match(humanPage, /join-panel/);
+  assert.match(humanPage, /CREATE PROFILE/);
+  assert.match(humanPage, /WELCOME BACK/);
+  assert.match(humanPage, /ENTER NETWORK/);
+  assert.match(humanJoin, /VERIFY WALLET/);
+  assert.match(humanJoin, /● CONNECTED/);
+  assert.match(humanJoin, /CONNECT A WALLET/);
+  assert.match(humanJoin, /normalizeWalletSignature/);
+  assert.match(humanJoin, /\/api\/v1\/auth\/wallet\/challenge/);
+  assert.match(humanJoin, /\/api\/v1\/auth\/wallet\/session/);
+  assert.match(humanJoin, /Connect a Solana wallet/);
+  assert.equal(humanJoin.includes("useEffect"), false);
+  assert.equal(humanPage.includes("100vw"), false);
+  assert.equal(humanJoin.includes("100vw"), false);
+  assert.match(css, /\.join-panel \{[\s\S]*--bit-column/);
+  assert.equal(css.includes("100vw"), false);
+  assert.match(header, /HumanIdentity/);
+  assert.match(identity, /DISCONNECT/);
+  assert.match(identity, /\/api\/v1\/auth\/sign-out/);
+  assert.match(identity, /disconnectActiveWallet/);
+  assert.match(networkHome, /className="network network-page"/);
+  assert.match(networkHome, /session\.status === "ready" && session\.account\.accountType === "HUMAN"/);
+  assert.match(verifyRoute, /export const runtime = "nodejs"/);
+  assert.match(verifyRoute, /humanAuthJson/);
+  assert.match(sessionRoute, /authenticated: false/);
+  assert.match(sessionRoute, /accountType: "HUMAN"/);
+  assert.equal(sessionRoute.includes("sessionId"), false);
+  assert.match(signOutRoute, /revokeHumanSession/);
+  assert.match(signOutRoute, /clearHumanAuthJson/);
+  assert.match(challengeRoute, /export const runtime = "nodejs"/);
+  assert.match(agentPage, /coming next/);
+  assert.match(agentPage, /className="home factory"/);
+  assert.equal(agentPage.includes("join-panel"), false);
+  assert.match(createPage, /CreateAgent/);
+  assert.match(bitPage, /<BitProduction \/>/);
+  assert.equal(bitPage.includes("join-panel"), false);
 });

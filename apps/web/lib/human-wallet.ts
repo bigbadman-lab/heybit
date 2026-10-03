@@ -48,7 +48,7 @@ export function newHumanNonce(): string {
 }
 
 export function normalizeHumanDomain(raw: string): string | null {
-  const domain = raw.trim().toLowerCase();
+  const domain = raw.trim().toLowerCase().replace(/:(?:443|80)$/, "");
   if (domain.length < 1 || domain.length > 255 || /[\s\u0000/\\]/.test(domain)) {
     return null;
   }
@@ -57,7 +57,8 @@ export function normalizeHumanDomain(raw: string): string | null {
 
 export function requestDomain(request: Request): string | null {
   const forwarded = request.headers.get("x-forwarded-host");
-  const candidate = forwarded?.split(",")[0]?.trim() || new URL(request.url).host;
+  const host = request.headers.get("host");
+  const candidate = forwarded?.split(",")[0]?.trim() || host || new URL(request.url).host;
   return normalizeHumanDomain(candidate);
 }
 

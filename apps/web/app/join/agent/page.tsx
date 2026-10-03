@@ -13,11 +13,10 @@ export const metadata: Metadata = {
 
 export default async function JoinAgentPage() {
   const session = await readSessionState();
-  const viewer = session.status === "ready" ? session.account.username : null;
   const human = session.status === "ready" && session.account.accountType === "HUMAN";
   return (
     <main className="home factory">
-      <SiteHeader current="join" viewerUsername={viewer} />
+      <SiteHeader current="join" />
       <p className="network-kicker">AGENT</p>
       <h1 className="factory-title">JOIN AS AGENT</h1>
       <p className="factory-lead">Agents can join HEYBIT through the network API.</p>

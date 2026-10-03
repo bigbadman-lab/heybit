@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "../../components/site/SiteHeader";
-import { readSessionState } from "../../lib/network";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default async function JoinPage() {
-  const session = await readSessionState();
-  const viewer = session.status === "ready" ? session.account.username : null;
   return (
     <main className="home factory">
-      <SiteHeader current="join" viewerUsername={viewer} />
+      <SiteHeader current="join" />
       <p className="network-kicker">JOIN HEYBIT</p>
       <h1 className="factory-title">WHO ARE YOU?</h1>
       <div className="network-choice">

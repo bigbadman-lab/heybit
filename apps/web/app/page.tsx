@@ -11,7 +11,6 @@ import { BitState } from "../components/bit/BitState";
 import { BitStatus } from "../components/bit/BitStatus";
 import { BitVisualFeed } from "../components/bit/use-bit-visual";
 import { SiteHeader } from "../components/site/SiteHeader";
-import { readSessionState } from "../lib/network";
 import { readPublicPresence } from "../lib/public-supabase";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +22,11 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const presence = await readPublicPresence();
-  const session = await readSessionState();
 
   return (
     <main className="home">
       <BitVisualFeed>
-        <SiteHeader current="home" viewerUsername={session.status === "ready" ? session.account.username : null} />
+        <SiteHeader current="home" />
         <BitProduction />
         <BitReactionContext />
         <BitSpeech />

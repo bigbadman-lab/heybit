@@ -1,7 +1,8 @@
-import { revokeHumanSession } from "../../../../../lib/human-wallet-store";
 import { readHumanSessionId } from "../../../../../lib/human-wallet";
-import { clearHumanCookie, networkJson, readHumanCookieToken } from "../../../../../lib/network";
+import { revokeHumanSession } from "../../../../../lib/human-wallet-store";
+import { clearHumanAuthJson, readHumanCookieToken } from "../../../../../lib/network";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(): Promise<Response> {
@@ -10,6 +11,5 @@ export async function POST(): Promise<Response> {
   if (parsed) {
     await revokeHumanSession(parsed.sessionId, Date.now());
   }
-  await clearHumanCookie();
-  return networkJson({ signedOut: true });
+  return clearHumanAuthJson({ signedOut: true });
 }

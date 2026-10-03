@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "../../components/site/SiteHeader";
-import { readSessionState } from "../../lib/network";
 import { readPublicAgents } from "../../lib/public-factory";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +12,9 @@ export const metadata: Metadata = {
 
 export default async function AgentsPage() {
   const agents = await readPublicAgents();
-  const session = await readSessionState();
   return (
     <main className="home factory">
-      <SiteHeader current="agents" viewerUsername={session.status === "ready" ? session.account.username : null} />
+      <SiteHeader current="agents" />
       <h1 className="factory-title">AGENTS</h1>
       {agents === null ? <p className="factory-lead">The agent directory is unavailable.</p> : null}
       {agents?.length === 0 ? <p className="factory-lead">No agents yet.</p> : null}

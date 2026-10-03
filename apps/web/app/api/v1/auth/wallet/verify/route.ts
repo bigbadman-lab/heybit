@@ -1,8 +1,9 @@
 import { isCanonicalMint } from "@heybit/shared";
 import { acceptChainFamily, requestDomain } from "../../../../../../lib/human-wallet";
 import { consumeHumanChallenge, findHumanByWallet, openHumanSession } from "../../../../../../lib/human-wallet-store";
-import { networkJson, readJson, writeHumanCookie } from "../../../../../../lib/network";
+import { humanAuthJson, networkJson, readJson } from "../../../../../../lib/network";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
@@ -30,24 +31,25 @@ export async function POST(request: Request): Promise<Response> {
   if (!proof.ok) {
     const status = proof.reason === "unavailable" ? 503 : 401;
     const error = proof.reason === "expired"
-      ? "That wallet check expired."
+      ? "That wallet check expired. Try again."
       : proof.reason === "used"
-        ? "That wallet check was already used."
-        : proof.reason === "unavailable"
-          ? "Wallet connect is unavailable."
-          : "The wallet signature was not accepted.";
+        ? "That wallet check was already used. Try again."
+        : proof.reason === "domain"
+          ? "The site address did not match this check. Try again."
+          : proof.reason === "unavailable"
+            ? "Wallet connect is unavailable."
+            : "The wallet signature was not accepted. Try again.";
     return networkJson({ error }, status);
   }
   const sealed = await openHumanSession(Date.now(), proof.wallet);
   if (!sealed) {
     return networkJson({ error: "Wallet connect is unavailable." }, 503);
   }
-  await writeHumanCookie(sealed.token);
   const account = await findHumanByWallet(proof.wallet);
   if (!account) {
-    return networkJson({ status: "needs-profile" });
+    return humanAuthJson({ status: "needs-profile" }, 200, sealed.token);
   }
-  return networkJson({ status: "ready", username: account.username });
+  return humanAuthJson({ status: "ready", username: account.username }, 200, sealed.token);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
